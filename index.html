@@ -82,6 +82,7 @@
 
 </a-scene>
 <button id="photoButton" aria-label="写真を撮る"></button>
+  
 <script>
 document.getElementById("photoButton").addEventListener("click", () => {
 
@@ -93,7 +94,7 @@ document.getElementById("photoButton").addEventListener("click", () => {
     return;
   }
 
-  // 撮影直前にARを明示的に再描画
+  // 撮影直前にARを再描画
   scene.renderer.render(scene.object3D, scene.camera);
 
   requestAnimationFrame(() => {
@@ -106,7 +107,7 @@ document.getElementById("photoButton").addEventListener("click", () => {
 
     const ctx = canvas.getContext("2d");
 
-    // 1. カメラ映像
+    // カメラ映像
     ctx.drawImage(
       video,
       0,
@@ -115,7 +116,7 @@ document.getElementById("photoButton").addEventListener("click", () => {
       canvas.height
     );
 
-    // 2. AR（ずんだもん）
+    // AR表示（ずんだもん）
     ctx.drawImage(
       arCanvas,
       0,
@@ -124,37 +125,136 @@ document.getElementById("photoButton").addEventListener("click", () => {
       canvas.height
     );
 
-    // 3. 撮影結果
-    const image = canvas.toDataURL("image/png");
+    // PNG画像を作成
+    canvas.toBlob((blob) => {
 
-    const preview = window.open("", "_blank");
+      const imageUrl = URL.createObjectURL(blob);
 
-    preview.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta name="viewport"
-              content="width=device-width, initial-scale=1.0">
-        <title>AR Photo</title>
-        <style>
-          body {
-            margin: 0;
-            background: black;
-          }
+      const preview = window.open("", "_blank");
 
-          img {
-            width: 100%;
-            height: auto;
-            display: block;
-          }
-        </style>
-      </head>
+      preview.document.write(`
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+          <meta charset="UTF-8">
 
-      <body>
-        <img src="${image}">
-      </body>
-      </html>
-    `);
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0">
+
+          <title>AR Photo</title>
+
+          <style>
+
+            * {
+              box-sizing: border-box;
+            }
+
+            html, body {
+              margin: 0;
+              padding: 0;
+              background: #111;
+              color: white;
+              font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Helvetica Neue",
+                sans-serif;
+            }
+
+            .container {
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            }
+
+            .photo {
+              width: 100%;
+              display: block;
+            }
+
+            .buttons {
+              width: 100%;
+              padding: 18px;
+              display: flex;
+              gap: 12px;
+            }
+
+            button,
+            a {
+              flex: 1;
+              min-height: 56px;
+              border-radius: 14px;
+              border: none;
+              font-size: 17px;
+              font-weight: 600;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              text-decoration: none;
+              cursor: pointer;
+            }
+
+            .save {
+              background: white;
+              color: #111;
+            }
+
+            .retry {
+              background: #444;
+              color: white;
+            }
+
+            .note {
+              padding: 0 20px 20px;
+              font-size: 13px;
+              color: #bbb;
+              text-align: center;
+            }
+
+          </style>
+        </head>
+
+        <body>
+
+          <div class="container">
+
+            <img
+              class="photo"
+              src="${imageUrl}"
+              alt="撮影したAR写真">
+
+            <div class="buttons">
+
+              <button
+                class="retry"
+                onclick="window.close()">
+                撮り直す
+              </button>
+
+              <a
+                class="save"
+                href="${imageUrl}"
+                download="tsuda-ar-photo.png">
+                写真を保存
+              </a>
+
+            </div>
+
+            <div class="note">
+              保存できない場合は、写真を長押しして保存してください。
+            </div>
+
+          </div>
+
+        </body>
+        </html>
+      `);
+
+      preview.document.close();
+
+    }, "image/png");
 
   });
 });
