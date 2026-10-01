@@ -125,7 +125,6 @@ document.getElementById("photoButton").addEventListener("click", () => {
       canvas.height
     );
 
-    // PNG画像を作成
     canvas.toBlob((blob) => {
 
       const imageUrl = URL.createObjectURL(blob);
@@ -135,9 +134,9 @@ document.getElementById("photoButton").addEventListener("click", () => {
       preview.document.write(`
         <!DOCTYPE html>
         <html lang="ja">
+
         <head>
           <meta charset="UTF-8">
-
           <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0">
@@ -145,7 +144,6 @@ document.getElementById("photoButton").addEventListener("click", () => {
           <title>AR Photo</title>
 
           <style>
-
             * {
               box-sizing: border-box;
             }
@@ -181,19 +179,13 @@ document.getElementById("photoButton").addEventListener("click", () => {
               gap: 12px;
             }
 
-            button,
-            a {
+            button {
               flex: 1;
               min-height: 56px;
               border-radius: 14px;
               border: none;
               font-size: 17px;
               font-weight: 600;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              text-decoration: none;
-              cursor: pointer;
             }
 
             .save {
@@ -212,7 +204,6 @@ document.getElementById("photoButton").addEventListener("click", () => {
               color: #bbb;
               text-align: center;
             }
-
           </style>
         </head>
 
@@ -233,20 +224,75 @@ document.getElementById("photoButton").addEventListener("click", () => {
                 撮り直す
               </button>
 
-              <a
+              <button
                 class="save"
-                href="${imageUrl}"
-                download="tsuda-ar-photo.png">
-                写真を保存
-              </a>
+                id="saveButton">
+                写真に保存
+              </button>
 
             </div>
 
             <div class="note">
-              保存できない場合は、写真を長押しして保存してください。
+              「写真に保存」を押して、共有画面から「画像を保存」を選んでください。
             </div>
 
           </div>
+
+          <script>
+
+            document
+              .getElementById("saveButton")
+              .addEventListener("click", async () => {
+
+                try {
+
+                  const response =
+                    await fetch("${imageUrl}");
+
+                  const blob =
+                    await response.blob();
+
+                  const file =
+                    new File(
+                      [blob],
+                      "tsuda-ar-photo.png",
+                      { type: "image/png" }
+                    );
+
+                  if (
+                    navigator.share &&
+                    navigator.canShare &&
+                    navigator.canShare({
+                      files: [file]
+                    })
+                  ) {
+
+                    await navigator.share({
+                      files: [file],
+                      title: "AR Photo"
+                    });
+
+                  } else {
+
+                    alert(
+                      "写真を長押しして「写真に保存」を選んでください。"
+                    );
+
+                  }
+
+                } catch (error) {
+
+                  console.error(error);
+
+                  alert(
+                    "写真を長押しして「写真に保存」を選んでください。"
+                  );
+
+                }
+
+              });
+
+          <\/script>
 
         </body>
         </html>
@@ -257,6 +303,7 @@ document.getElementById("photoButton").addEventListener("click", () => {
     }, "image/png");
 
   });
+
 });
 </script>
   
