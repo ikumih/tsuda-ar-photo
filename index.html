@@ -2,11 +2,47 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
   <title>津田 AR Photo</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <!-- MindAR -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
 
 <body>
-  <h1>AR Photo Test</h1>
-  <p>WebARを準備中です。</p>
+
+  <a-scene
+    mindar-image="imageTargetSrc: ./assets/ume-marker.mind;"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+    </a-assets>
+
+    <!-- 梅マーカーを認識すると、この箱が表示される -->
+    <a-entity mindar-image-target="targetIndex: 0">
+
+      <a-box
+        position="0 0 0"
+        scale="0.4 0.4 0.4"
+        color="red">
+      </a-box>
+
+    </a-entity>
+
+    <a-camera
+      position="0 0 0"
+      look-controls="enabled: false">
+    </a-camera>
+
+  </a-scene>
+
 </body>
 </html>
