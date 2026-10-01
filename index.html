@@ -11,213 +11,59 @@
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
-    body {
+    html, body {
       margin: 0;
-      overflow: hidden;
-      font-family: sans-serif;
-    }
-
-    /* 撮影ボタン */
-    #captureButton {
-      position: fixed;
-      bottom: 35px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-
-      width: 76px;
-      height: 76px;
-
-      border-radius: 50%;
-      border: 6px solid white;
-
-      background: rgba(255,255,255,0.35);
-
-      font-size: 32px;
-      cursor: pointer;
-    }
-
-    /* 撮影後の確認画面 */
-    #photoScreen {
-      display: none;
-
-      position: fixed;
-      top: 0;
-      left: 0;
-
+      padding: 0;
       width: 100%;
       height: 100%;
-
-      background: rgba(0,0,0,0.92);
-
-      z-index: 2000;
-
-      text-align: center;
+      overflow: hidden;
     }
 
-    #photo {
-      max-width: 95%;
-      max-height: 82%;
-
-      margin-top: 20px;
-    }
-
-    #closeButton {
-      margin-top: 15px;
-
-      padding: 12px 25px;
-
-      border: none;
-      border-radius: 8px;
-
-      font-size: 18px;
-    }
-
-    #message {
-      color: white;
-      font-size: 14px;
-      margin-top: 8px;
+    a-scene {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
     }
   </style>
 </head>
 
-
 <body>
 
-  <!-- 撮影ボタン -->
-  <button id="captureButton">📷</button>
+<a-scene
+  mindar-image="imageTargetSrc: ./assets/ume-marker.mind;"
+  embedded
+  color-space="sRGB"
+  renderer="colorManagement: true, physicallyCorrectLights"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false">
 
+  <a-assets>
+    <a-asset-item
+      id="zundamon"
+      src="./assets/zundamon.glb">
+    </a-asset-item>
+  </a-assets>
 
-  <!-- 撮影結果 -->
-  <div id="photoScreen">
+  <a-entity mindar-image-target="targetIndex: 0">
 
-    <img id="photo">
-
-    <div id="message">
-      写真を長押しして保存できます
-    </div>
-
-    <button id="closeButton">
-      ARに戻る
-    </button>
-
-  </div>
-
-
-  <!-- AR -->
-  <a-scene
-    mindar-image="imageTargetSrc: ./assets/ume-marker.mind;"
-    color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights; preserveDrawingBuffer: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false"
-    embedded>
-
-    <a-assets>
-
-      <a-asset-item
-        id="zundamon"
-        src="./assets/zundamon.glb">
-      </a-asset-item>
-
-    </a-assets>
-
-
-    <!-- マーカー -->
-    <a-entity mindar-image-target="targetIndex: 0">
-
-      <a-gltf-model
-        src="#zundamon"
-        position="0 0 0"
-        rotation="0 0 0"
-        scale="1.2 1.2 1.2"
-        animation="property: position; from: 0 0 0; to: 0 0.18 0; dur: 600; dir: alternate; loop: true; easing: easeInOutQuad">
-      </a-gltf-model>
-
-    </a-entity>
-
-
-    <a-camera
+    <a-gltf-model
+      src="#zundamon"
       position="0 0 0"
-      look-controls="enabled: false">
-    </a-camera>
+      rotation="0 0 0"
+      scale="0.5 0.5 0.5"
+      animation="property: position; from: 0 0 0; to: 0 0.18 0; dur: 600; dir: alternate; loop: true; easing: easeInOutQuad">
+    </a-gltf-model>
 
-  </a-scene>
+  </a-entity>
 
+  <a-camera
+    position="0 0 0"
+    look-controls="enabled: false">
+  </a-camera>
 
-  <script>
-
-    const captureButton =
-      document.getElementById("captureButton");
-
-    const photoScreen =
-      document.getElementById("photoScreen");
-
-    const photo =
-      document.getElementById("photo");
-
-    const closeButton =
-      document.getElementById("closeButton");
-
-
-    captureButton.addEventListener("click", () => {
-
-      const scene =
-        document.querySelector("a-scene");
-
-      const renderer =
-        scene.renderer;
-
-      if (!renderer) {
-        alert("ARの準備がまだできていません");
-        return;
-      }
-
-      renderer.render(
-        scene.object3D,
-        scene.camera
-      );
-
-      const canvas =
-        renderer.domElement;
-
-      try {
-
-        const image =
-          canvas.toDataURL("image/png");
-
-        photo.src = image;
-
-        photoScreen.style.display =
-          "block";
-
-        captureButton.style.display =
-          "none";
-
-      } catch (error) {
-
-        console.error(error);
-
-        alert(
-          "撮影に失敗しました。"
-        );
-
-      }
-
-    });
-
-
-    closeButton.addEventListener("click", () => {
-
-      photoScreen.style.display =
-        "none";
-
-      captureButton.style.display =
-        "block";
-
-    });
-
-  </script>
+</a-scene>
 
 </body>
 </html>
