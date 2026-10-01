@@ -82,5 +82,53 @@
 
 </a-scene>
 <button id="photoButton" aria-label="写真を撮る"></button>
+  <script>
+document.getElementById("photoButton").addEventListener("click", async () => {
+
+  const video = document.querySelector("video");
+  const scene = document.querySelector("a-scene");
+  const arCanvas = scene.canvas;
+
+  if (!video || !arCanvas) {
+    alert("ARカメラの準備ができていません");
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
+
+  // カメラ映像
+  ctx.drawImage(
+    video,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  // ARの3D表示を重ねる
+  ctx.drawImage(
+    arCanvas,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  // 撮影結果を表示
+  const image = canvas.toDataURL("image/png");
+
+  const preview = window.open();
+  preview.document.write(
+    '<img src="' + image +
+    '" style="width:100%;height:auto;">'
+  );
+
+});
+</script>
 </body>
 </html>
