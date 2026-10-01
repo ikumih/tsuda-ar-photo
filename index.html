@@ -82,53 +82,83 @@
 
 </a-scene>
 <button id="photoButton" aria-label="写真を撮る"></button>
-  <script>
-document.getElementById("photoButton").addEventListener("click", async () => {
+<script>
+document.getElementById("photoButton").addEventListener("click", () => {
 
   const video = document.querySelector("video");
   const scene = document.querySelector("a-scene");
-  const arCanvas = scene.canvas;
 
-  if (!video || !arCanvas) {
+  if (!video || !scene || !scene.renderer) {
     alert("ARカメラの準備ができていません");
     return;
   }
 
-  const canvas = document.createElement("canvas");
+  // 撮影直前にARを明示的に再描画
+  scene.renderer.render(scene.object3D, scene.camera);
 
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  requestAnimationFrame(() => {
 
-  const ctx = canvas.getContext("2d");
+    const arCanvas = scene.canvas;
 
-  // カメラ映像
-  ctx.drawImage(
-    video,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-  // ARの3D表示を重ねる
-  ctx.drawImage(
-    arCanvas,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
+    const ctx = canvas.getContext("2d");
 
-  // 撮影結果を表示
-  const image = canvas.toDataURL("image/png");
+    // 1. カメラ映像
+    ctx.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
-  const preview = window.open();
-  preview.document.write(
-    '<img src="' + image +
-    '" style="width:100%;height:auto;">'
-  );
+    // 2. AR（ずんだもん）
+    ctx.drawImage(
+      arCanvas,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
+    // 3. 撮影結果
+    const image = canvas.toDataURL("image/png");
+
+    const preview = window.open("", "_blank");
+
+    preview.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0">
+        <title>AR Photo</title>
+        <style>
+          body {
+            margin: 0;
+            background: black;
+          }
+
+          img {
+            width: 100%;
+            height: auto;
+            display: block;
+          }
+        </style>
+      </head>
+
+      <body>
+        <img src="${image}">
+      </body>
+      </html>
+    `);
+
+  });
 });
 </script>
+  
 </body>
 </html>
