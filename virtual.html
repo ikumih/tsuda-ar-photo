@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,
+             initial-scale=1.0,
+             maximum-scale=1.0,
+             user-scalable=no,
+             viewport-fit=cover"
+  >
+
+  <title>AR Photo Virtual Background Test</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+
+      width: 100%;
+      height: 100%;
+
+      overflow: hidden;
+
+      background: #000;
+
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+    }
+
+
+    /* 元のカメラ映像は非表示 */
+    #camera {
+      display: none;
+    }
+
+
+    /* 合成結果 */
+    #output {
+      position: fixed;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+      height: 100%;
+
+      object-fit: cover;
+
+      z-index: 1;
+    }
+
+
+    /* 上部メニュー */
+    #controls {
+      position: fixed;
+
+      top: max(
+        8px,
+        env(safe-area-inset-top)
+      );
+
+      left: 50%;
+
+      transform: translateX(-50%);
+
+      width: calc(100% - 16px);
+      max-width: 430px;
+
+      z-index: 20;
+
+      padding: 7px;
+
+      border-radius: 14px;
+
+      background:
+        rgba(255,255,255,0.90);
+
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+
+    .row {
+      display: flex;
+      align-items: center;
+
+      gap: 5px;
+    }
+
+
+    .label {
+      width: 45px;
+
+      flex-shrink: 0;
+
+      font-size: 11px;
+      font-weight: 600;
+
+      color: #555;
+    }
+
+
+    .buttons {
+      display: flex;
+
+      flex: 1;
+
+      gap: 4px;
+    }
+
+
+    button {
+      flex: 1;
+
+      min-height: 32px;
+
+      border: 0;
+
+      border-radius: 999px;
+
+      padding: 5px;
+
+      background: #eee;
+
+      color: #333;
+
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+
+    button.active {
+      background: #222;
+      color: #fff;
+    }
+
+
+    /* 状態表示 */
+    #status {
+      position: fixed;
+
+      left: 50%;
+
+      bottom:
+        max(
+          22px,
+          env(safe-area-inset-bottom)
+        );
+
+      transform: translateX(-50%);
+
+      z-index: 20;
+
+      padding: 7px 12px;
+
+      border-radius: 999px;
+
+      background:
+        rgba(0,0,0,0.60);
+
+      color: #fff;
+
+      font-size: 11px;
+
+      white-space: nowrap;
+    }
+
+  </style>
+</head>
+
+
+<body>
+
+
+  <!-- カメラ -->
+  <video
+    id="camera"
+    autoplay
+    playsinline
+    muted>
+  </video>
+
+
+  <!-- 合成結果 -->
+  <canvas id="output"></canvas>
+
+
+  <!-- 操作 -->
+  <div id="controls">
+
+    <div class="row">
+
+      <div class="label">
+        背景
+      </div>
+
+      <div class="buttons">
+
+        <button
+          id="normalButton"
+          class="active">
+
+          通常
+
+        </button>
+
+        <button
+          id="airportButton">
+
+          空港
+
+        </button>
+
+        <button
+          id="universityButton">
+
+          大学
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div id="status">
+    カメラを準備しています…
+  </div>
+
+
+  <!-- MediaPipe Tasks Vision -->
+  <script type="module">
+
+    import {
+      ImageSegmenter,
+      FilesetResolver
+    }
+    from
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+
+    /* ===================================
+       DOM
+    =================================== */
+
+    const video =
+      document.querySelector("#camera");
+
+
+    const canvas =
+      document.querySelector("#output");
+
+
+    const ctx =
+      canvas.getContext(
+        "2d",
+        {
+          willReadFrequently: true
+        }
+      );
+
+
+    const status =
+      document.querySelector("#status");
+
+
+    const normalButton =
+      document.querySelector(
+        "#normalButton"
+      );
+
+
+    const airportButton =
+      document.querySelector(
+        "#airportButton"
+      );
+
+
+    const universityButton =
+      document.querySelector(
+        "#universityButton"
+      );
+
+
+    /* ===================================
+       背景画像
+    =================================== */
+
+    const airportImage =
+      new Image();
+
+
+    airportImage.src =
+      "./assets/airport.jpg";
+
+
+    const universityImage =
+      new Image();
+
+
+    universityImage.src =
+      "./assets/university.jpg";
+
+
+    let currentBackground =
+      "normal";
+
+
+    /* ===================================
+       MediaPipe
+    =================================== */
+
+    let imageSegmenter =
+      null;
+
+
+    let lastVideoTime =
+      -1;
+
+
+    /* ===================================
+       背景選択
+    =================================== */
+
+    function selectBackground(type) {
+
+      currentBackground =
+        type;
+
+
+      normalButton.classList.remove(
+        "active"
+      );
+
+
+      airportButton.classList.remove(
+        "active"
+      );
+
+
+      universityButton.classList.remove(
+        "active"
+      );
+
+
+      if (type === "normal") {
+
+        normalButton.classList.add(
+          "active"
+        );
+
+      }
+
+
+      if (type === "airport") {
+
+        airportButton.classList.add(
+          "active"
+        );
+
+      }
+
+
+      if (type === "university") {
+
+        universityButton.classList.add(
+          "active"
+        );
+
+      }
+
+    }
+
+
+    normalButton.addEventListener(
+      "click",
+      () => {
+
+        selectBackground(
+          "normal"
+        );
+
+      }
+    );
+
+
+    airportButton.addEventListener(
+      "click",
+      () => {
+
+        selectBackground(
+          "airport"
+        );
+
+      }
+    );
+
+
+    universityButton.addEventListener(
+      "click",
+      () => {
+
+        selectBackground(
+          "university"
+        );
+
+      }
+    );
+
+
+    /* ===================================
+       MediaPipe準備
+    =================================== */
+
+    async function setupSegmenter() {
+
+      status.textContent =
+        "人物認識を準備しています…";
+
+
+      const vision =
+        await FilesetResolver
+          .forVisionTasks(
+
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+
+          );
+
+
+      imageSegmenter =
+        await ImageSegmenter
+          .createFromOptions(
+
+            vision,
+
+            {
+
+              baseOptions: {
+
+                modelAssetPath:
+
+                  "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter_landscape/float16/latest/selfie_segmenter_landscape.tflite",
+
+                delegate:
+                  "GPU"
+
+              },
+
+
+              runningMode:
+                "VIDEO",
+
+
+              outputCategoryMask:
+                true,
+
+
+              outputConfidenceMasks:
+                false
+
+            }
+
+          );
+
+
+      status.textContent =
+        "カメラを起動します…";
+
+    }
+
+
+    /* ===================================
+       カメラ
+    =================================== */
+
+    async function setupCamera() {
+
+      const stream =
+        await navigator.mediaDevices
+          .getUserMedia({
+
+            video: {
+
+              facingMode: {
+                ideal:
+                  "environment"
+              },
+
+              width: {
+                ideal:
+                  1280
+              },
+
+              height: {
+                ideal:
+                  720
+              }
+
+            },
+
+            audio:
+              false
+
+          });
+
+
+      video.srcObject =
+        stream;
+
+
+      await video.play();
+
+
+      await new Promise(resolve => {
+
+        if (
+          video.readyState >= 2
+        ) {
+
+          resolve();
+
+        } else {
+
+          video.onloadedmetadata =
+            () => resolve();
+
+        }
+
+      });
+
+
+      canvas.width =
+        video.videoWidth;
+
+
+      canvas.height =
+        video.videoHeight;
+
+
+      status.textContent =
+        "準備完了";
+
+
+      requestAnimationFrame(
+        render
+      );
+
+    }
+
+
+    /* ===================================
+       coverで画像描画
+    =================================== */
+
+    function drawCover(
+      image,
+      width,
+      height
+    ) {
+
+      if (
+        !image.complete ||
+        image.naturalWidth === 0
+      ) {
+
+        ctx.fillStyle =
+          "#222";
+
+
+        ctx.fillRect(
+          0,
+          0,
+          width,
+          height
+        );
+
+
+        return;
+      }
+
+
+      const imageRatio =
+        image.naturalWidth /
+        image.naturalHeight;
+
+
+      const canvasRatio =
+        width /
+        height;
+
+
+      let sx;
+      let sy;
+      let sw;
+      let sh;
+
+
+      if (
+        imageRatio >
+        canvasRatio
+      ) {
+
+        sh =
+          image.naturalHeight;
+
+
+        sw =
+          sh *
+          canvasRatio;
+
+
+        sx =
+          (
+            image.naturalWidth -
+            sw
+          ) / 2;
+
+
+        sy =
+          0;
+
+      } else {
+
+        sw =
+          image.naturalWidth;
+
+
+        sh =
+          sw /
+          canvasRatio;
+
+
+        sx =
+          0;
+
+
+        sy =
+          (
+            image.naturalHeight -
+            sh
+          ) / 2;
+
+      }
+
+
+      ctx.drawImage(
+
+        image,
+
+        sx,
+        sy,
+        sw,
+        sh,
+
+        0,
+        0,
+        width,
+        height
+
+      );
+
+    }
+
+
+    /* ===================================
+       通常カメラ
+    =================================== */
+
+    function drawNormal() {
+
+      ctx.globalCompositeOperation =
+        "source-over";
+
+
+      ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+
+      ctx.drawImage(
+
+        video,
+
+        0,
+        0,
+
+        canvas.width,
+        canvas.height
+
+      );
+
+    }
+
+
+    /* ===================================
+       人物＋背景合成
+    =================================== */
+
+    function drawVirtualBackground(
+      result
+    ) {
+
+      const width =
+        canvas.width;
+
+
+      const height =
+        canvas.height;
+
+
+      /*
+        セグメンテーション結果
+      */
+
+      const mask =
+        result.categoryMask;
+
+
+      if (!mask) {
+
+        drawNormal();
+
+        return;
+      }
+
+
+      const maskData =
+        mask.getAsUint8Array();
+
+
+      const maskWidth =
+        mask.width;
+
+
+      const maskHeight =
+        mask.height;
+
+
+      /*
+        小さいマスク用Canvas
+      */
+
+      const maskCanvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      maskCanvas.width =
+        maskWidth;
+
+
+      maskCanvas.height =
+        maskHeight;
+
+
+      const maskCtx =
+        maskCanvas.getContext(
+          "2d"
+        );
+
+
+      const imageData =
+        maskCtx.createImageData(
+          maskWidth,
+          maskHeight
+        );
+
+
+      /*
+        Selfie Segmenterでは
+        人物と背景を分類する。
+
+        人物部分を不透明にする。
+      */
+
+      for (
+        let i = 0;
+        i < maskData.length;
+        i++
+      ) {
+
+        const offset =
+          i * 4;
+
+
+        /*
+          category 0/1 のどちらが人物かは
+          モデル結果に合わせて使用。
+          Selfie Segmenterでは人物側を残す。
+        */
+
+        const person =
+          maskData[i] !== 0;
+
+
+        imageData.data[
+          offset
+        ] = 255;
+
+
+        imageData.data[
+          offset + 1
+        ] = 255;
+
+
+        imageData.data[
+          offset + 2
+        ] = 255;
+
+
+        imageData.data[
+          offset + 3
+        ] =
+          person
+            ? 255
+            : 0;
+
+      }
+
+
+      maskCtx.putImageData(
+        imageData,
+        0,
+        0
+      );
+
+
+      /*
+        人物だけを一時Canvasへ
+      */
+
+      const personCanvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      personCanvas.width =
+        width;
+
+
+      personCanvas.height =
+        height;
+
+
+      const personCtx =
+        personCanvas.getContext(
+          "2d"
+        );
+
+
+      personCtx.drawImage(
+
+        video,
+
+        0,
+        0,
+
+        width,
+        height
+
+      );
+
+
+      personCtx.globalCompositeOperation =
+        "destination-in";
+
+
+      personCtx.drawImage(
+
+        maskCanvas,
+
+        0,
+        0,
+
+        width,
+        height
+
+      );
+
+
+      /*
+        最終合成
+      */
+
+      ctx.globalCompositeOperation =
+        "source-over";
+
+
+      ctx.clearRect(
+        0,
+        0,
+        width,
+        height
+      );
+
+
+      /*
+        背景
+      */
+
+      if (
+        currentBackground ===
+        "airport"
+      ) {
+
+        drawCover(
+          airportImage,
+          width,
+          height
+        );
+
+      }
+
+
+      if (
+        currentBackground ===
+        "university"
+      ) {
+
+        drawCover(
+          universityImage,
+          width,
+          height
+        );
+
+      }
+
+
+      /*
+        人物
+      */
+
+      ctx.drawImage(
+
+        personCanvas,
+
+        0,
+        0,
+
+        width,
+        height
+
+      );
+
+
+      /*
+        MediaPipeのmaskを解放
+      */
+
+      mask.close();
+
+    }
+
+
+    /* ===================================
+       描画ループ
+    =================================== */
+
+    function render() {
+
+
+      if (
+        video.readyState < 2
+      ) {
+
+        requestAnimationFrame(
+          render
+        );
+
+        return;
+
+      }
+
+
+      /*
+        通常ならMediaPipeを使わない
+      */
+
+      if (
+        currentBackground ===
+        "normal"
+      ) {
+
+        drawNormal();
+
+
+        requestAnimationFrame(
+          render
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+        新しいvideo frameのみ解析
+      */
+
+      if (
+        video.currentTime !==
+        lastVideoTime
+      ) {
+
+        lastVideoTime =
+          video.currentTime;
+
+
+        const now =
+          performance.now();
+
+
+        imageSegmenter.segmentForVideo(
+
+          video,
+
+          now,
+
+          result => {
+
+            drawVirtualBackground(
+              result
+            );
+
+          }
+
+        );
+
+      }
+
+
+      requestAnimationFrame(
+        render
+      );
+
+    }
+
+
+    /* ===================================
+       起動
+    =================================== */
+
+    async function start() {
+
+      try {
+
+        await setupSegmenter();
+
+        await setupCamera();
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        status.textContent =
+          "起動できませんでした";
+
+
+        alert(
+          "カメラまたは人物認識を起動できませんでした。"
+        );
+
+      }
+
+    }
+
+
+    start();
+
+  </script>
+
+</body>
+</html>
