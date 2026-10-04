@@ -1,0 +1,2590 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,
+             initial-scale=1.0,
+             maximum-scale=1.0,
+             user-scalable=no,
+             viewport-fit=cover"
+  >
+
+  <title>津田 AR Virtual Photo</title>
+
+
+  <!-- =========================
+       A-Frame / MindAR
+  ========================== -->
+
+  <script
+    src="https://aframe.io/releases/1.6.0/aframe.min.js">
+  </script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js">
+  </script>
+
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+
+    html,
+    body {
+
+      margin: 0;
+      padding: 0;
+
+      width: 100%;
+      height: 100%;
+
+      overflow: hidden;
+
+      background: #000;
+
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        sans-serif;
+    }
+
+
+    /* ========================================
+       バーチャル背景
+    ======================================== */
+
+    #virtualCanvas {
+
+      position: fixed;
+
+      top: 0;
+      left: 0;
+
+      width: 100%;
+      height: 100%;
+
+      z-index: 0;
+
+      object-fit: cover;
+
+      display: none;
+    }
+
+
+    /* ========================================
+       MindAR
+    ======================================== */
+
+    #arScene {
+
+      position: fixed !important;
+
+      top: 0 !important;
+      left: 0 !important;
+
+      width: 100% !important;
+      height: 100% !important;
+
+      z-index: 1;
+    }
+
+
+    /* ========================================
+       操作パネル
+    ======================================== */
+
+    #controls {
+
+      position: fixed;
+
+      top:
+        max(
+          8px,
+          env(safe-area-inset-top)
+        );
+
+      left: 50%;
+
+      transform:
+        translateX(-50%);
+
+      width:
+        calc(100% - 16px);
+
+      max-width:
+        430px;
+
+      z-index:
+        9998;
+
+      padding:
+        6px 8px;
+
+      border-radius:
+        13px;
+
+      background:
+        rgba(255,255,255,0.90);
+
+      backdrop-filter:
+        blur(8px);
+
+      -webkit-backdrop-filter:
+        blur(8px);
+    }
+
+
+    .controlRow {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 5px;
+
+      margin:
+        2px 0;
+    }
+
+
+    .controlLabel {
+
+      width:
+        55px;
+
+      flex-shrink:
+        0;
+
+      font-size:
+        11px;
+
+      font-weight:
+        600;
+
+      color:
+        #555;
+    }
+
+
+    .buttonGroup {
+
+      display: flex;
+
+      flex: 1;
+
+      gap: 4px;
+    }
+
+
+    .selectButton {
+
+      flex: 1;
+
+      min-height:
+        31px;
+
+      border:
+        0;
+
+      border-radius:
+        999px;
+
+      padding:
+        5px;
+
+      background:
+        #eee;
+
+      color:
+        #333;
+
+      font-size:
+        11px;
+
+      font-weight:
+        600;
+    }
+
+
+    .selectButton.active {
+
+      background:
+        #222;
+
+      color:
+        white;
+    }
+
+
+    /* ========================================
+       状態表示
+    ======================================== */
+
+    #status {
+
+      position: fixed;
+
+      left: 50%;
+
+      bottom:
+        max(
+          105px,
+          calc(
+            env(safe-area-inset-bottom)
+            + 95px
+          )
+        );
+
+      transform:
+        translateX(-50%);
+
+      z-index:
+        9998;
+
+      padding:
+        6px 10px;
+
+      border-radius:
+        999px;
+
+      background:
+        rgba(0,0,0,0.55);
+
+      color:
+        white;
+
+      font-size:
+        11px;
+
+      white-space:
+        nowrap;
+    }
+
+
+    /* ========================================
+       シャッター
+    ======================================== */
+
+    #photoButton {
+
+      position: fixed;
+
+      left: 50%;
+
+      bottom:
+        max(
+          20px,
+          env(safe-area-inset-bottom)
+        );
+
+      transform:
+        translateX(-50%);
+
+      width:
+        64px;
+
+      height:
+        64px;
+
+      border-radius:
+        50%;
+
+      border:
+        5px solid white;
+
+      background:
+        rgba(255,255,255,0.35);
+
+      box-shadow:
+        0 2px 12px
+        rgba(0,0,0,0.25);
+
+      z-index:
+        9999;
+    }
+
+
+    /* ========================================
+       撮影後プレビュー
+    ======================================== */
+
+    #preview {
+
+      position: fixed;
+
+      inset: 0;
+
+      z-index:
+        20000;
+
+      display:
+        none;
+
+      flex-direction:
+        column;
+
+      background:
+        #111;
+    }
+
+
+    #previewImage {
+
+      width:
+        100%;
+
+      flex:
+        1;
+
+      min-height:
+        0;
+
+      object-fit:
+        contain;
+
+      background:
+        #111;
+    }
+
+
+    #previewControls {
+
+      display:
+        flex;
+
+      justify-content:
+        center;
+
+      gap:
+        10px;
+
+      padding:
+        12px
+        10px
+        max(
+          12px,
+          env(safe-area-inset-bottom)
+        );
+
+      background:
+        white;
+    }
+
+
+    #previewControls button {
+
+      min-width:
+        120px;
+
+      padding:
+        11px 15px;
+
+      border:
+        0;
+
+      border-radius:
+        999px;
+
+      font-size:
+        13px;
+
+      font-weight:
+        600;
+    }
+
+
+    #retakeButton {
+
+      background:
+        #eee;
+
+      color:
+        #333;
+    }
+
+
+    #saveButton {
+
+      background:
+        #222;
+
+      color:
+        white;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<!-- ========================================
+     MediaPipeで作る背景
+======================================== -->
+
+<canvas id="virtualCanvas"></canvas>
+
+
+
+<!-- ========================================
+     MindAR
+======================================== -->
+
+<a-scene
+
+  id="arScene"
+
+  mindar-image="
+    imageTargetSrc: ./assets/ume-marker.mind;
+    filterMinCF: 0.001;
+    filterBeta: 0.01;
+    warmupTolerance: 5;
+    missTolerance: 20;
+  "
+
+  embedded
+
+  color-space="sRGB"
+
+  renderer="
+    colorManagement: true;
+    physicallyCorrectLights: true;
+    preserveDrawingBuffer: true;
+    alpha: true;
+  "
+
+  vr-mode-ui="
+    enabled: false
+  "
+
+  device-orientation-permission-ui="
+    enabled: false
+  ">
+
+
+  <!-- ========================================
+       3Dモデル
+  ======================================== -->
+
+  <a-assets>
+
+
+    <a-asset-item
+
+      id="umekoModel"
+
+      src="./assets/umeko.glb">
+
+    </a-asset-item>
+
+
+    <a-asset-item
+
+      id="zundamonModel"
+
+      src="./assets/zundamon.glb">
+
+    </a-asset-item>
+
+
+  </a-assets>
+
+
+
+  <!-- ========================================
+       照明
+  ======================================== -->
+
+  <a-entity
+
+    light="
+      type: ambient;
+      intensity: 1.4;
+    ">
+
+  </a-entity>
+
+
+  <a-entity
+
+    light="
+      type: directional;
+      intensity: 1.2;
+    "
+
+    position="
+      1 2 2
+    ">
+
+  </a-entity>
+
+
+
+  <!-- ========================================
+       マーカー
+  ======================================== -->
+
+  <a-entity
+
+    id="markerTarget"
+
+    mindar-image-target="
+      targetIndex: 0
+    ">
+
+
+    <!-- ====================================
+         津田梅子
+    ===================================== -->
+
+    <a-gltf-model
+
+      id="umeko"
+
+      src="#umekoModel"
+
+      position="
+        0 0 0
+      "
+
+      rotation="
+        90 0 0
+      "
+
+      scale="
+        1.0 1.0 1.0
+      "
+
+      visible="
+        true
+      ">
+
+    </a-gltf-model>
+
+
+
+    <!-- ====================================
+         ずんだもん
+    ===================================== -->
+
+    <a-gltf-model
+
+      id="zundamon"
+
+      src="#zundamonModel"
+
+      position="
+        0.3 0 0
+      "
+
+      rotation="
+        90 0 0
+      "
+
+      scale="
+        1.2 1.2 1.2
+      "
+
+      visible="
+        false
+      "
+
+      animation="
+        property: scale;
+        from: 1.2 1.2 1.2;
+        to: 1.2 1.28 1.2;
+        dur: 600;
+        dir: alternate;
+        loop: true;
+        easing: easeInOutQuad;
+      ">
+
+    </a-gltf-model>
+
+
+  </a-entity>
+
+
+
+  <!-- ========================================
+       ARカメラ
+  ======================================== -->
+
+  <a-camera
+
+    position="
+      0 0 0
+    "
+
+    look-controls="
+      enabled: false
+    ">
+
+  </a-camera>
+
+
+</a-scene>
+
+
+
+<!-- ========================================
+     操作パネル
+======================================== -->
+
+<div id="controls">
+
+
+  <!-- キャラクター -->
+
+  <div class="controlRow">
+
+
+    <div class="controlLabel">
+
+      キャラ
+
+    </div>
+
+
+    <div class="buttonGroup">
+
+
+      <button
+
+        id="umekoButton"
+
+        class="
+          selectButton
+          active
+        "
+
+        type="button">
+
+        津田梅子
+
+      </button>
+
+
+      <button
+
+        id="zundamonButton"
+
+        class="
+          selectButton
+        "
+
+        type="button">
+
+        ずんだもん
+
+      </button>
+
+
+    </div>
+
+  </div>
+
+
+
+  <!-- 背景 -->
+
+  <div class="controlRow">
+
+
+    <div class="controlLabel">
+
+      背景
+
+    </div>
+
+
+    <div class="buttonGroup">
+
+
+      <button
+
+        id="normalButton"
+
+        class="
+          selectButton
+          active
+        "
+
+        type="button">
+
+        通常
+
+      </button>
+
+
+      <button
+
+        id="airportButton"
+
+        class="
+          selectButton
+        "
+
+        type="button">
+
+        空港
+
+      </button>
+
+
+      <button
+
+        id="universityButton"
+
+        class="
+          selectButton
+        "
+
+        type="button">
+
+        大学
+
+      </button>
+
+
+    </div>
+
+  </div>
+
+
+</div>
+
+
+
+<!-- ========================================
+     状態
+======================================== -->
+
+<div id="status">
+
+  マーカーにカメラを向けてください
+
+</div>
+
+
+
+<!-- ========================================
+     撮影
+======================================== -->
+
+<button
+
+  id="photoButton"
+
+  type="button"
+
+  aria-label="
+    写真を撮る
+  ">
+
+</button>
+
+
+
+<!-- ========================================
+     撮影後
+======================================== -->
+
+<div id="preview">
+
+
+  <img
+
+    id="previewImage"
+
+    alt="
+      撮影したAR写真
+    ">
+
+
+  <div id="previewControls">
+
+
+    <button
+
+      id="retakeButton"
+
+      type="button">
+
+      撮り直す
+
+    </button>
+
+
+    <button
+
+      id="saveButton"
+
+      type="button">
+
+      写真に保存
+
+    </button>
+
+
+  </div>
+
+
+</div>
+
+
+
+<!-- ========================================
+     MediaPipe + AR制御
+======================================== -->
+
+<script type="module">
+
+
+import {
+
+  ImageSegmenter,
+
+  FilesetResolver
+
+}
+
+from
+
+"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+
+
+/* ========================================
+   DOM
+======================================== */
+
+
+const scene =
+  document.querySelector(
+    "#arScene"
+  );
+
+
+const markerTarget =
+  document.querySelector(
+    "#markerTarget"
+  );
+
+
+const umeko =
+  document.querySelector(
+    "#umeko"
+  );
+
+
+const zundamon =
+  document.querySelector(
+    "#zundamon"
+  );
+
+
+const umekoButton =
+  document.querySelector(
+    "#umekoButton"
+  );
+
+
+const zundamonButton =
+  document.querySelector(
+    "#zundamonButton"
+  );
+
+
+const normalButton =
+  document.querySelector(
+    "#normalButton"
+  );
+
+
+const airportButton =
+  document.querySelector(
+    "#airportButton"
+  );
+
+
+const universityButton =
+  document.querySelector(
+    "#universityButton"
+  );
+
+
+const virtualCanvas =
+  document.querySelector(
+    "#virtualCanvas"
+  );
+
+
+const virtualCtx =
+  virtualCanvas.getContext(
+
+    "2d",
+
+    {
+      willReadFrequently:
+        true
+    }
+
+  );
+
+
+const status =
+  document.querySelector(
+    "#status"
+  );
+
+
+const photoButton =
+  document.querySelector(
+    "#photoButton"
+  );
+
+
+const preview =
+  document.querySelector(
+    "#preview"
+  );
+
+
+const previewImage =
+  document.querySelector(
+    "#previewImage"
+  );
+
+
+const retakeButton =
+  document.querySelector(
+    "#retakeButton"
+  );
+
+
+const saveButton =
+  document.querySelector(
+    "#saveButton"
+  );
+
+
+
+/* ========================================
+   背景画像
+======================================== */
+
+
+const airportImage =
+  new Image();
+
+
+airportImage.src =
+  "./assets/airport.jpg";
+
+
+
+const universityImage =
+  new Image();
+
+
+universityImage.src =
+  "./assets/university.jpg";
+
+
+
+/* ========================================
+   状態
+======================================== */
+
+
+let currentBackground =
+  "normal";
+
+
+let imageSegmenter =
+  null;
+
+
+let lastVideoTime =
+  -1;
+
+
+let segmentationStarted =
+  false;
+
+
+let capturedBlob =
+  null;
+
+
+
+/* ========================================
+   キャラクター切替
+======================================== */
+
+
+function selectCharacter(
+  name
+) {
+
+
+  const showUmeko =
+    name ===
+    "umeko";
+
+
+  umeko.setAttribute(
+
+    "visible",
+
+    showUmeko
+
+  );
+
+
+  zundamon.setAttribute(
+
+    "visible",
+
+    !showUmeko
+
+  );
+
+
+  umekoButton
+    .classList
+    .toggle(
+
+      "active",
+
+      showUmeko
+
+    );
+
+
+  zundamonButton
+    .classList
+    .toggle(
+
+      "active",
+
+      !showUmeko
+
+    );
+
+}
+
+
+
+umekoButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    selectCharacter(
+      "umeko"
+    );
+
+  }
+
+);
+
+
+
+zundamonButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    selectCharacter(
+      "zundamon"
+    );
+
+  }
+
+);
+
+
+
+/* ========================================
+   背景切替
+======================================== */
+
+
+async function selectBackground(
+  type
+) {
+
+
+  currentBackground =
+    type;
+
+
+  normalButton
+    .classList
+    .remove(
+      "active"
+    );
+
+
+  airportButton
+    .classList
+    .remove(
+      "active"
+    );
+
+
+  universityButton
+    .classList
+    .remove(
+      "active"
+    );
+
+
+
+  if (
+    type ===
+    "normal"
+  ) {
+
+
+    normalButton
+      .classList
+      .add(
+        "active"
+      );
+
+
+    virtualCanvas.style.display =
+      "none";
+
+
+    return;
+
+  }
+
+
+
+  if (
+    type ===
+    "airport"
+  ) {
+
+
+    airportButton
+      .classList
+      .add(
+        "active"
+      );
+
+  }
+
+
+
+  if (
+    type ===
+    "university"
+  ) {
+
+
+    universityButton
+      .classList
+      .add(
+        "active"
+      );
+
+  }
+
+
+
+  virtualCanvas.style.display =
+    "block";
+
+
+  if (
+    !segmentationStarted
+  ) {
+
+
+    await startSegmentation();
+
+
+  }
+
+}
+
+
+
+normalButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    selectBackground(
+      "normal"
+    );
+
+  }
+
+);
+
+
+
+airportButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    selectBackground(
+      "airport"
+    );
+
+  }
+
+);
+
+
+
+universityButton.addEventListener(
+
+  "click",
+
+  () => {
+
+    selectBackground(
+      "university"
+    );
+
+  }
+
+);
+
+
+
+/* ========================================
+   マーカー
+======================================== */
+
+
+markerTarget.addEventListener(
+
+  "targetFound",
+
+  () => {
+
+
+    status.textContent =
+      "AR表示中";
+
+
+  }
+
+);
+
+
+
+markerTarget.addEventListener(
+
+  "targetLost",
+
+  () => {
+
+
+    status.textContent =
+      "マーカーにカメラを向けてください";
+
+
+  }
+
+);
+
+
+
+/* ========================================
+   MediaPipe準備
+======================================== */
+
+
+async function setupSegmenter() {
+
+
+  const vision =
+
+    await FilesetResolver
+      .forVisionTasks(
+
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+
+      );
+
+
+
+  imageSegmenter =
+
+    await ImageSegmenter
+      .createFromOptions(
+
+        vision,
+
+        {
+
+          baseOptions: {
+
+            modelAssetPath:
+
+              "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter_landscape/float16/latest/selfie_segmenter_landscape.tflite",
+
+            delegate:
+              "GPU"
+
+          },
+
+
+          runningMode:
+            "VIDEO",
+
+
+          outputCategoryMask:
+            true,
+
+
+          outputConfidenceMasks:
+            false
+
+        }
+
+      );
+
+}
+
+
+
+/* ========================================
+   MindARのカメラvideo取得
+======================================== */
+
+
+function getARVideo() {
+
+
+  const videos =
+    document.querySelectorAll(
+      "video"
+    );
+
+
+  for (
+    const video
+    of videos
+  ) {
+
+
+    if (
+      video.srcObject &&
+      video.videoWidth > 0
+    ) {
+
+
+      return video;
+
+
+    }
+
+  }
+
+
+  return null;
+
+}
+
+
+
+/* ========================================
+   セグメンテーション開始
+======================================== */
+
+
+async function startSegmentation() {
+
+
+  try {
+
+
+    status.textContent =
+      "背景処理を準備しています…";
+
+
+    if (
+      !imageSegmenter
+    ) {
+
+
+      await setupSegmenter();
+
+
+    }
+
+
+
+    let video =
+      getARVideo();
+
+
+    let count =
+      0;
+
+
+
+    while (
+      !video &&
+      count < 50
+    ) {
+
+
+      await new Promise(
+
+        resolve =>
+          setTimeout(
+            resolve,
+            100
+          )
+
+      );
+
+
+      video =
+        getARVideo();
+
+
+      count++;
+
+    }
+
+
+
+    if (
+      !video
+    ) {
+
+
+      throw new Error(
+        "MindAR video not found"
+      );
+
+    }
+
+
+
+    virtualCanvas.width =
+      video.videoWidth;
+
+
+    virtualCanvas.height =
+      video.videoHeight;
+
+
+    segmentationStarted =
+      true;
+
+
+    status.textContent =
+      "背景処理ON";
+
+
+    requestAnimationFrame(
+      renderVirtualBackground
+    );
+
+
+  } catch (
+    error
+  ) {
+
+
+    console.error(
+      error
+    );
+
+
+    status.textContent =
+      "背景処理を起動できませんでした";
+
+
+  }
+
+}
+
+
+
+/* ========================================
+   背景画像を全体表示
+======================================== */
+
+
+function drawBackgroundContain(
+
+  image,
+
+  width,
+
+  height
+
+) {
+
+
+  if (
+
+    !image.complete ||
+
+    image.naturalWidth === 0
+
+  ) {
+
+
+    virtualCtx.fillStyle =
+      "#000";
+
+
+    virtualCtx.fillRect(
+
+      0,
+      0,
+      width,
+      height
+
+    );
+
+
+    return;
+
+  }
+
+
+
+  const imageRatio =
+
+    image.naturalWidth /
+    image.naturalHeight;
+
+
+
+  const canvasRatio =
+
+    width /
+    height;
+
+
+
+  let drawWidth;
+
+  let drawHeight;
+
+
+
+  if (
+
+    imageRatio >
+    canvasRatio
+
+  ) {
+
+
+    drawWidth =
+      width;
+
+
+    drawHeight =
+      width /
+      imageRatio;
+
+
+  } else {
+
+
+    drawHeight =
+      height;
+
+
+    drawWidth =
+      height *
+      imageRatio;
+
+  }
+
+
+
+  const x =
+
+    (
+      width -
+      drawWidth
+    ) / 2;
+
+
+
+  const y =
+
+    (
+      height -
+      drawHeight
+    ) / 2;
+
+
+
+  virtualCtx.fillStyle =
+    "#000";
+
+
+  virtualCtx.fillRect(
+
+    0,
+    0,
+    width,
+    height
+
+  );
+
+
+
+  virtualCtx.drawImage(
+
+    image,
+
+    x,
+    y,
+
+    drawWidth,
+    drawHeight
+
+  );
+
+}
+
+
+
+/* ========================================
+   人物＋背景
+======================================== */
+
+
+function drawVirtualResult(
+
+  video,
+
+  result
+
+) {
+
+
+  const width =
+    virtualCanvas.width;
+
+
+  const height =
+    virtualCanvas.height;
+
+
+
+  const mask =
+    result.categoryMask;
+
+
+
+  if (
+    !mask
+  ) {
+
+    return;
+
+  }
+
+
+
+  const maskData =
+    mask.getAsUint8Array();
+
+
+  const maskWidth =
+    mask.width;
+
+
+  const maskHeight =
+    mask.height;
+
+
+
+  const maskCanvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  maskCanvas.width =
+    maskWidth;
+
+
+  maskCanvas.height =
+    maskHeight;
+
+
+
+  const maskCtx =
+    maskCanvas.getContext(
+      "2d"
+    );
+
+
+
+  const imageData =
+    maskCtx.createImageData(
+
+      maskWidth,
+
+      maskHeight
+
+    );
+
+
+
+  for (
+
+    let i = 0;
+
+    i <
+    maskData.length;
+
+    i++
+
+  ) {
+
+
+    const offset =
+      i * 4;
+
+
+
+    /*
+      virtual.htmlで確認済み：
+      category 0 を人物として残す
+    */
+
+    const person =
+
+      maskData[i] === 0;
+
+
+
+    imageData.data[
+      offset
+    ] = 255;
+
+
+    imageData.data[
+      offset + 1
+    ] = 255;
+
+
+    imageData.data[
+      offset + 2
+    ] = 255;
+
+
+    imageData.data[
+      offset + 3
+    ] =
+
+      person
+        ? 255
+        : 0;
+
+  }
+
+
+
+  maskCtx.putImageData(
+
+    imageData,
+
+    0,
+
+    0
+
+  );
+
+
+
+  /* 人物だけのCanvas */
+
+
+  const personCanvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  personCanvas.width =
+    width;
+
+
+  personCanvas.height =
+    height;
+
+
+
+  const personCtx =
+    personCanvas.getContext(
+      "2d"
+    );
+
+
+
+  personCtx.drawImage(
+
+    video,
+
+    0,
+    0,
+
+    width,
+    height
+
+  );
+
+
+
+  personCtx.globalCompositeOperation =
+    "destination-in";
+
+
+
+  personCtx.drawImage(
+
+    maskCanvas,
+
+    0,
+    0,
+
+    width,
+    height
+
+  );
+
+
+
+  /* 最終背景 */
+
+
+  virtualCtx.globalCompositeOperation =
+    "source-over";
+
+
+  virtualCtx.clearRect(
+
+    0,
+    0,
+
+    width,
+    height
+
+  );
+
+
+
+  if (
+
+    currentBackground ===
+    "airport"
+
+  ) {
+
+
+    drawBackgroundContain(
+
+      airportImage,
+
+      width,
+
+      height
+
+    );
+
+
+  } else if (
+
+    currentBackground ===
+    "university"
+
+  ) {
+
+
+    drawBackgroundContain(
+
+      universityImage,
+
+      width,
+
+      height
+
+    );
+
+  }
+
+
+
+  /* 人物 */
+
+
+  virtualCtx.drawImage(
+
+    personCanvas,
+
+    0,
+    0,
+
+    width,
+    height
+
+  );
+
+
+
+  mask.close();
+
+}
+
+
+
+/* ========================================
+   背景描画ループ
+======================================== */
+
+
+function renderVirtualBackground() {
+
+
+  if (
+    !segmentationStarted
+  ) {
+
+    return;
+
+  }
+
+
+
+  const video =
+    getARVideo();
+
+
+
+  if (
+
+    !video ||
+
+    video.readyState < 2
+
+  ) {
+
+
+    requestAnimationFrame(
+      renderVirtualBackground
+    );
+
+
+    return;
+
+  }
+
+
+
+  if (
+
+    currentBackground ===
+    "normal"
+
+  ) {
+
+
+    requestAnimationFrame(
+      renderVirtualBackground
+    );
+
+
+    return;
+
+  }
+
+
+
+  if (
+
+    video.currentTime !==
+    lastVideoTime
+
+  ) {
+
+
+    lastVideoTime =
+      video.currentTime;
+
+
+
+    imageSegmenter.segmentForVideo(
+
+      video,
+
+      performance.now(),
+
+      result => {
+
+
+        drawVirtualResult(
+
+          video,
+
+          result
+
+        );
+
+
+      }
+
+    );
+
+  }
+
+
+
+  requestAnimationFrame(
+    renderVirtualBackground
+  );
+
+}
+
+
+
+/* ========================================
+   撮影
+======================================== */
+
+
+photoButton.addEventListener(
+
+  "click",
+
+  capturePhoto
+
+);
+
+
+
+function capturePhoto() {
+
+
+  const video =
+    getARVideo();
+
+
+
+  if (
+
+    !video ||
+
+    !scene.renderer ||
+
+    !scene.renderer.domElement
+
+  ) {
+
+
+    alert(
+      "カメラの準備ができていません"
+    );
+
+
+    return;
+
+  }
+
+
+
+  const width =
+    video.videoWidth;
+
+
+  const height =
+    video.videoHeight;
+
+
+
+  const output =
+    document.createElement(
+      "canvas"
+    );
+
+
+  output.width =
+    width;
+
+
+  output.height =
+    height;
+
+
+
+  const ctx =
+    output.getContext(
+      "2d"
+    );
+
+
+
+  /*
+    1. 背景＋人物
+  */
+
+
+  if (
+
+    currentBackground ===
+    "normal"
+
+  ) {
+
+
+    ctx.drawImage(
+
+      video,
+
+      0,
+      0,
+
+      width,
+      height
+
+    );
+
+
+  } else {
+
+
+    ctx.drawImage(
+
+      virtualCanvas,
+
+      0,
+      0,
+
+      width,
+      height
+
+    );
+
+  }
+
+
+
+  /*
+    2. ARモデル
+  */
+
+
+  scene.renderer.render(
+
+    scene.object3D,
+
+    scene.camera
+
+  );
+
+
+
+  const arCanvas =
+    scene.renderer.domElement;
+
+
+
+  ctx.drawImage(
+
+    arCanvas,
+
+    0,
+    0,
+
+    width,
+    height
+
+  );
+
+
+
+  /*
+    3. 写真タイトル
+  */
+
+
+  const bandHeight =
+
+    height *
+    0.08;
+
+
+
+  ctx.fillStyle =
+    "rgba(0,0,0,0.45)";
+
+
+  ctx.fillRect(
+
+    0,
+
+    height -
+    bandHeight,
+
+    width,
+
+    bandHeight
+
+  );
+
+
+
+  ctx.fillStyle =
+    "#fff";
+
+
+  ctx.textAlign =
+    "center";
+
+
+  ctx.textBaseline =
+    "middle";
+
+
+  ctx.font =
+
+    `bold ${
+      Math.floor(
+        width * 0.035
+      )
+    }px sans-serif`;
+
+
+
+  ctx.fillText(
+
+    "津田 AR Photo",
+
+    width / 2,
+
+    height -
+    bandHeight / 2
+
+  );
+
+
+
+  finishCapture(
+    output
+  );
+
+}
+
+
+
+/* ========================================
+   撮影結果
+======================================== */
+
+
+function finishCapture(
+  canvas
+) {
+
+
+  canvas.toBlob(
+
+    blob => {
+
+
+      if (
+        !blob
+      ) {
+
+
+        alert(
+          "写真を作成できませんでした"
+        );
+
+
+        return;
+
+      }
+
+
+
+      capturedBlob =
+        blob;
+
+
+
+      previewImage.src =
+
+        URL.createObjectURL(
+          blob
+        );
+
+
+
+      preview.style.display =
+        "flex";
+
+
+    },
+
+    "image/png",
+
+    1
+
+  );
+
+}
+
+
+
+/* ========================================
+   撮り直し
+======================================== */
+
+
+retakeButton.addEventListener(
+
+  "click",
+
+  () => {
+
+
+    preview.style.display =
+      "none";
+
+
+    if (
+      previewImage.src
+    ) {
+
+
+      URL.revokeObjectURL(
+        previewImage.src
+      );
+
+    }
+
+
+    previewImage.removeAttribute(
+      "src"
+    );
+
+
+    capturedBlob =
+      null;
+
+
+  }
+
+);
+
+
+
+/* ========================================
+   保存
+======================================== */
+
+
+saveButton.addEventListener(
+
+  "click",
+
+  async () => {
+
+
+    if (
+      !capturedBlob
+    ) {
+
+      return;
+
+    }
+
+
+
+    const file =
+      new File(
+
+        [capturedBlob],
+
+        "tsuda-ar-photo.png",
+
+        {
+          type:
+            "image/png"
+        }
+
+      );
+
+
+
+    if (
+
+      navigator.share &&
+
+      navigator.canShare &&
+
+      navigator.canShare({
+        files: [file]
+      })
+
+    ) {
+
+
+      try {
+
+
+        await navigator.share({
+
+          files: [file],
+
+          title:
+            "津田 AR Photo"
+
+        });
+
+
+
+        preview.style.display =
+          "none";
+
+
+        return;
+
+
+      } catch (
+        error
+      ) {
+
+
+        if (
+          error.name ===
+          "AbortError"
+        ) {
+
+          return;
+
+        }
+
+
+        console.error(
+          error
+        );
+
+      }
+
+    }
+
+
+
+    const url =
+
+      URL.createObjectURL(
+        capturedBlob
+      );
+
+
+
+    const link =
+
+      document.createElement(
+        "a"
+      );
+
+
+
+    link.href =
+      url;
+
+
+    link.download =
+      "tsuda-ar-photo.png";
+
+
+
+    document.body.appendChild(
+      link
+    );
+
+
+    link.click();
+
+
+    link.remove();
+
+
+
+    setTimeout(
+
+      () => {
+
+        URL.revokeObjectURL(
+          url
+        );
+
+      },
+
+      1000
+
+    );
+
+
+
+    preview.style.display =
+      "none";
+
+  }
+
+);
+
+
+
+/* ========================================
+   初期状態
+======================================== */
+
+
+selectCharacter(
+  "umeko"
+);
+
+
+</script>
+
+
+</body>
+
+</html>
