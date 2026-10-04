@@ -568,31 +568,90 @@
     =================================== */
 
     function drawCover(
-      image,
-      width,
-      height
-    ) {
+  image,
+  width,
+  height
+) {
 
-      if (
-        !image.complete ||
-        image.naturalWidth === 0
-      ) {
+  if (
+    !image.complete ||
+    image.naturalWidth === 0
+  ) {
+    return;
+  }
 
-        ctx.fillStyle =
-          "#222";
+  const imageRatio =
+    image.naturalWidth /
+    image.naturalHeight;
+
+  const canvasRatio =
+    width /
+    height;
+
+  let drawWidth;
+  let drawHeight;
+  let x;
+  let y;
 
 
-        ctx.fillRect(
-          0,
-          0,
-          width,
-          height
-        );
+  /* 画像全体が画面内に入るようにする */
+
+  if (
+    imageRatio >
+    canvasRatio
+  ) {
+
+    drawWidth =
+      width;
+
+    drawHeight =
+      width /
+      imageRatio;
+
+  } else {
+
+    drawHeight =
+      height;
+
+    drawWidth =
+      height *
+      imageRatio;
+
+  }
 
 
-        return;
-      }
+  x =
+    (width - drawWidth) / 2;
 
+
+  y =
+    (height - drawHeight) / 2;
+
+
+  /* 余った部分 */
+
+  ctx.fillStyle =
+    "#000";
+
+  ctx.fillRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  /* 背景画像 */
+
+  ctx.drawImage(
+    image,
+    x,
+    y,
+    drawWidth,
+    drawHeight
+  );
+
+}
 
       const imageRatio =
         image.naturalWidth /
