@@ -567,7 +567,7 @@
        coverで画像描画
     =================================== */
 
-    function drawCover(
+function drawCover(
   image,
   width,
   height
@@ -652,88 +652,6 @@
   );
 
 }
-
-      const imageRatio =
-        image.naturalWidth /
-        image.naturalHeight;
-
-
-      const canvasRatio =
-        width /
-        height;
-
-
-      let sx;
-      let sy;
-      let sw;
-      let sh;
-
-
-      if (
-        imageRatio >
-        canvasRatio
-      ) {
-
-        sh =
-          image.naturalHeight;
-
-
-        sw =
-          sh *
-          canvasRatio;
-
-
-        sx =
-          (
-            image.naturalWidth -
-            sw
-          ) / 2;
-
-
-        sy =
-          0;
-
-      } else {
-
-        sw =
-          image.naturalWidth;
-
-
-        sh =
-          sw /
-          canvasRatio;
-
-
-        sx =
-          0;
-
-
-        sy =
-          (
-            image.naturalHeight -
-            sh
-          ) / 2;
-
-      }
-
-
-      ctx.drawImage(
-
-        image,
-
-        sx,
-        sy,
-        sw,
-        sh,
-
-        0,
-        0,
-        width,
-        height
-
-      );
-
-    }
 
 
     /* ===================================
