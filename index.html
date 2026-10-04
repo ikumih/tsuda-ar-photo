@@ -1,29 +1,24 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-
   <meta charset="UTF-8">
 
   <meta
     name="viewport"
-    content="width=device-width,
-             initial-scale=1.0,
-             user-scalable=no,
+    content="width=device-width, initial-scale=1.0,
+             maximum-scale=1.0, user-scalable=no,
              viewport-fit=cover"
   >
 
-  <title>津田 AR Photo</title>
+  <title>ARフォト</title>
 
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-  <!-- 元の動作版と同じ -->
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-
+  <!-- MindAR -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
-
   <style>
-
     * {
       box-sizing: border-box;
     }
@@ -32,10 +27,8 @@
     body {
       margin: 0;
       padding: 0;
-
       width: 100%;
       height: 100%;
-
       overflow: hidden;
 
       font-family:
@@ -45,95 +38,90 @@
         "Hiragino Kaku Gothic ProN",
         "Yu Gothic",
         sans-serif;
+
+      background: transparent;
     }
 
-
-    /* =========================
+    /* ====================
        AR
-    ========================= */
+    ==================== */
 
-    a-scene {
-      position: fixed !important;
-
-      top: 0;
-      left: 0;
-
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-
-    /* =========================
-       背景画像
-       AR認識を邪魔しない
-    ========================= */
-
-    #backgroundEffect {
-
+    #arScene {
       position: fixed;
-
       inset: 0;
 
       width: 100%;
       height: 100%;
 
-      z-index: 10;
+      z-index: 1;
+    }
+
+    /* ====================
+       背景演出
+    ==================== */
+
+    #backgroundEffect {
+      position: fixed;
+      inset: 0;
+
+      z-index: 2;
 
       display: none;
 
-      pointer-events: none;
+      width: 100%;
+      height: 100%;
 
-      background-size: cover;
       background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
 
-      opacity: 0.30;
+      opacity: 0.32;
+
+      pointer-events: none;
     }
 
+    /* ====================
+       UI
+    ==================== */
 
-    /* =========================
-       上部操作
-    ========================= */
-
-    #controls {
-
+    #ui {
       position: fixed;
+      inset: 0;
 
-      top: max(
-        8px,
-        env(safe-area-inset-top)
-      );
+      z-index: 20;
+
+      pointer-events: none;
+    }
+
+    #controlPanel {
+      position: absolute;
+
+      top: max(6px, env(safe-area-inset-top));
 
       left: 50%;
+      transform: translateX(-50%);
 
-      transform:
-        translateX(-50%);
-
-      width:
-        calc(100% - 16px);
-
-      max-width: 430px;
-
-      z-index: 9998;
+      width: calc(100% - 16px);
+      max-width: 420px;
 
       padding: 6px 8px;
 
       border-radius: 13px;
 
       background:
-        rgba(255,255,255,0.88);
+        rgba(255, 255, 255, 0.88);
+
+      -webkit-backdrop-filter:
+        blur(8px);
 
       backdrop-filter:
         blur(8px);
 
-      -webkit-backdrop-filter:
-        blur(8px);
+      pointer-events: auto;
     }
 
-
     .controlRow {
-
       display: flex;
-
       align-items: center;
 
       gap: 5px;
@@ -141,1190 +129,1101 @@
       margin: 2px 0;
     }
 
-
     .controlLabel {
-
-      width: 55px;
-
-      flex-shrink: 0;
+      flex: 0 0 58px;
 
       font-size: 11px;
-
       font-weight: 600;
 
       color: #555;
     }
 
-
     .buttonGroup {
+      flex: 1;
 
       display: flex;
-
-      flex: 1;
 
       gap: 4px;
     }
 
-
     .selectButton {
-
       flex: 1;
 
       min-height: 31px;
 
-      border: none;
-
-      border-radius: 999px;
-
       padding: 5px;
+
+      border: 0;
+      border-radius: 999px;
 
       background: #eee;
 
       color: #333;
 
       font-size: 11px;
-
       font-weight: 600;
-    }
 
+      white-space: nowrap;
+    }
 
     .selectButton.active {
-
       background: #222;
-
-      color: white;
+      color: #fff;
     }
 
+    /* ====================
+       状態表示
+    ==================== */
 
-    /* =========================
-       撮影ボタン
-    ========================= */
+    #status {
+      position: absolute;
 
-    #photoButton {
+      left: 50%;
+      bottom: 102px;
 
-      position: fixed;
+      transform: translateX(-50%);
+
+      padding: 6px 10px;
+
+      border-radius: 999px;
+
+      background:
+        rgba(0, 0, 0, 0.55);
+
+      color: white;
+
+      font-size: 11px;
+
+      white-space: nowrap;
+    }
+
+    /* ====================
+       シャッター
+    ==================== */
+
+    #shutterArea {
+      position: absolute;
+
+      left: 0;
+      right: 0;
 
       bottom:
         max(
-          20px,
+          15px,
           env(safe-area-inset-bottom)
         );
 
-      left: 50%;
+      display: flex;
 
-      transform:
-        translateX(-50%);
+      justify-content: center;
 
-      width: 64px;
-      height: 64px;
+      pointer-events: none;
+    }
+
+    #shutter {
+      width: 62px;
+      height: 62px;
+
+      padding: 0;
 
       border-radius: 50%;
 
       border:
-        5px solid white;
+        5px solid
+        rgba(255, 255, 255, 0.95);
 
       background:
-        rgba(255,255,255,0.35);
+        rgba(255, 255, 255, 0.30);
 
-      z-index: 9999;
+      box-shadow:
+        0 0 0 2px rgba(0, 0, 0, 0.15),
+        0 3px 12px rgba(0, 0, 0, 0.25);
+
+      pointer-events: auto;
     }
 
+    /* ====================
+       撮影後
+    ==================== */
+
+    #preview {
+      position: fixed;
+      inset: 0;
+
+      z-index: 100;
+
+      display: none;
+
+      flex-direction: column;
+
+      background: #111;
+    }
+
+    #previewImage {
+      width: 100%;
+
+      flex: 1;
+
+      min-height: 0;
+
+      object-fit: contain;
+
+      background: #111;
+    }
+
+    #previewControls {
+      min-height: 76px;
+
+      display: flex;
+
+      justify-content: center;
+      align-items: center;
+
+      gap: 10px;
+
+      padding:
+        10px
+        10px
+        max(
+          10px,
+          env(safe-area-inset-bottom)
+        );
+
+      background: white;
+    }
+
+    #previewControls button {
+      min-width: 110px;
+
+      padding: 10px 14px;
+
+      border: 0;
+
+      border-radius: 999px;
+
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    #retakeButton {
+      background: #eee;
+      color: #333;
+    }
+
+    #saveButton {
+      background: #222;
+      color: white;
+    }
   </style>
-
 </head>
-
 
 <body>
 
-
-
-<!-- =========================
-     AR
-========================= -->
-
-<a-scene
-
-  id="arScene"
-
-  mindar-image="
-    imageTargetSrc: ./assets/ume-marker.mind;
-    filterMinCF: 0.001;
-    filterBeta: 0.01;
-    warmupTolerance: 5;
-    missTolerance: 20;
-  "
-
-  embedded
-
-  color-space="sRGB"
-
-  renderer="
-    colorManagement: true;
-    physicallyCorrectLights: true;
-    preserveDrawingBuffer: true;
-  "
-
-  vr-mode-ui="enabled: false"
-
-  device-orientation-permission-ui="
-    enabled: false
-  ">
-
-
   <!-- =========================
-       モデル
-  ========================= -->
+       AR
+  ========================== -->
 
-  <a-assets>
+  <a-scene
+
+    id="arScene"
+
+    mindar-image="
+      imageTargetSrc: ./assets/targets.mind;
+      autoStart: true;
+      uiLoading: yes;
+      uiScanning: yes;
+      uiError: yes;
+    "
+
+    renderer="
+      colorManagement: true;
+      physicallyCorrectLights: true;
+      preserveDrawingBuffer: true;
+      alpha: true;
+      antialias: true;
+    "
+
+    vr-mode-ui="enabled: false"
+
+    device-orientation-permission-ui="
+      enabled: false
+    "
+
+    embedded
+  >
+
+    <!-- 3Dモデル -->
+
+    <a-assets>
+
+      <a-asset-item
+        id="umekoAsset"
+        src="./assets/umeko.glb">
+      </a-asset-item>
+
+      <a-asset-item
+        id="zundamonAsset"
+        src="./assets/zundamon.glb">
+      </a-asset-item>
+
+    </a-assets>
 
 
-    <a-asset-item
-      id="umekoModel"
-      src="./assets/umeko.glb">
-    </a-asset-item>
+    <!-- 照明 -->
+
+    <a-entity
+      light="
+        type: ambient;
+        intensity: 1.4;
+      ">
+    </a-entity>
+
+    <a-entity
+      light="
+        type: directional;
+        intensity: 1.2;
+      "
+      position="1 2 2">
+    </a-entity>
 
 
-    <a-asset-item
-      id="zundamonModel"
-      src="./assets/zundamon.glb">
-    </a-asset-item>
+    <!-- =========================
+         マーカー
+    ========================== -->
+
+    <a-entity
+      id="target"
+      mindar-image-target="
+        targetIndex: 0
+      "
+    >
+
+      <!-- 津田梅子 -->
+
+      <a-gltf-model
+
+        id="umeko"
+
+        src="#umekoAsset"
+
+        position="0 0 0"
+
+        rotation="-90 0 0"
+
+        scale="
+          0.5
+          0.5
+          0.5
+        "
+
+        visible="true">
+
+      </a-gltf-model>
 
 
-  </a-assets>
+      <!-- ずんだもん -->
+
+      <a-gltf-model
+
+        id="zundamon"
+
+        src="#zundamonAsset"
+
+        position="0 0 0"
+
+        rotation="0 0 0"
+
+        scale="
+          0.5
+          0.5
+          0.5
+        "
+
+        visible="false">
+
+      </a-gltf-model>
+
+    </a-entity>
 
 
+    <!-- カメラ -->
 
-  <!-- =========================
-       マーカー
-  ========================= -->
-
-  <a-entity
-
-    id="markerTarget"
-
-    mindar-image-target="
-      targetIndex: 0
-    ">
-
-
-    <!-- 津田梅子 -->
-
-    <a-gltf-model
-
-      id="umeko"
-
-      src="#umekoModel"
+    <a-camera
 
       position="0 0 0"
 
-      rotation="0 0 0"
-
-      scale="0.5 0.5 0.5"
-
-      visible="true">
-
-    </a-gltf-model>
-
-
-
-    <!-- ずんだもん -->
-
-    <a-gltf-model
-
-      id="zundamon"
-
-      src="#zundamonModel"
-
-      position="1.1 0 0"
-
-      rotation="90 0 0"
-
-      scale="2.3 2.3 2.3"
-
-      visible="false"
-
-      animation="
-        property: scale;
-        from: 2.3 2.3 2.3;
-        to: 2.3 2.45 2.3;
-        dur: 600;
-        dir: alternate;
-        loop: true;
-        easing: easeInOutQuad;
+      look-controls="
+        enabled: false
       ">
 
-    </a-gltf-model>
+    </a-camera>
+
+  </a-scene>
 
 
-  </a-entity>
+  <!-- =========================
+       背景
+  ========================== -->
+
+  <div id="backgroundEffect"></div>
 
 
+  <!-- =========================
+       UI
+  ========================== -->
 
-  <!-- カメラ -->
+  <div id="ui">
 
-  <a-camera
+    <div id="controlPanel">
 
-    position="0 0 0"
+      <!-- キャラクター -->
 
-    look-controls="
-      enabled: false
-    ">
+      <div class="controlRow">
 
-  </a-camera>
+        <div class="controlLabel">
+          キャラ
+        </div>
+
+        <div class="buttonGroup">
+
+          <button
+            id="umekoButton"
+            class="selectButton active"
+            type="button">
+
+            津田梅子
+
+          </button>
+
+          <button
+            id="zundamonButton"
+            class="selectButton"
+            type="button">
+
+            ずんだもん
+
+          </button>
+
+        </div>
+
+      </div>
 
 
-</a-scene>
+      <!-- 背景 -->
 
+      <div class="controlRow">
 
+        <div class="controlLabel">
+          背景
+        </div>
 
-<!-- =========================
-     背景演出
-========================= -->
+        <div class="buttonGroup">
 
-<div id="backgroundEffect"></div>
+          <button
+            id="normalButton"
+            class="selectButton active"
+            type="button">
 
+            通常
 
+          </button>
 
-<!-- =========================
-     操作パネル
-========================= -->
+          <button
+            id="airportButton"
+            class="selectButton"
+            type="button">
 
-<div id="controls">
+            空港
 
+          </button>
 
-  <!-- キャラクター -->
+          <button
+            id="universityButton"
+            class="selectButton"
+            type="button">
 
-  <div class="controlRow">
+            大学
 
+          </button>
 
-    <div class="controlLabel">
-      キャラ
+        </div>
+
+      </div>
+
     </div>
 
 
-    <div class="buttonGroup">
-
-
-      <button
-
-        id="umekoButton"
-
-        class="
-          selectButton
-          active
-        ">
-
-        津田梅子
-
-      </button>
-
-
-      <button
-
-        id="zundamonButton"
-
-        class="selectButton">
-
-        ずんだもん
-
-      </button>
-
-
-    </div>
-
-  </div>
-
-
-
-  <!-- 背景 -->
-
-  <div class="controlRow">
-
-
-    <div class="controlLabel">
-      背景
+    <div id="status">
+      マーカーにカメラを向けてください
     </div>
 
 
-    <div class="buttonGroup">
-
-
-      <button
-
-        id="normalButton"
-
-        class="
-          selectButton
-          active
-        ">
-
-        通常
-
-      </button>
-
+    <div id="shutterArea">
 
       <button
-
-        id="airportButton"
-
-        class="selectButton">
-
-        空港
-
+        id="shutter"
+        type="button"
+        aria-label="写真を撮る">
       </button>
-
-
-      <button
-
-        id="universityButton"
-
-        class="selectButton">
-
-        大学
-
-      </button>
-
 
     </div>
 
   </div>
 
 
-</div>
+  <!-- =========================
+       撮影後
+  ========================== -->
 
+  <div id="preview">
 
+    <img
+      id="previewImage"
+      alt="撮影したAR写真"
+    >
 
-<!-- =========================
-     撮影
-========================= -->
+    <div id="previewControls">
 
-<button
+      <button
+        id="retakeButton"
+        type="button">
 
-  id="photoButton"
+        撮り直す
 
-  aria-label="写真を撮る">
+      </button>
 
-</button>
+      <button
+        id="saveButton"
+        type="button">
 
+        写真に保存
+
+      </button>
+
+    </div>
+
+  </div>
 
 
 <script>
 
+  const scene =
+    document.querySelector("#arScene");
 
-/* ========================================
-   キャラクター
-======================================== */
+  const target =
+    document.querySelector("#target");
 
+  const umeko =
+    document.querySelector("#umeko");
 
-const umeko =
-  document.querySelector("#umeko");
-
-
-const zundamon =
-  document.querySelector("#zundamon");
-
-
-const umekoButton =
-  document.querySelector("#umekoButton");
+  const zundamon =
+    document.querySelector("#zundamon");
 
 
-const zundamonButton =
-  document.querySelector("#zundamonButton");
+  const umekoButton =
+    document.querySelector("#umekoButton");
+
+  const zundamonButton =
+    document.querySelector("#zundamonButton");
 
 
+  const normalButton =
+    document.querySelector("#normalButton");
 
-function selectCharacter(name) {
+  const airportButton =
+    document.querySelector("#airportButton");
 
-
-  const showUmeko =
-    name === "umeko";
-
-
-  umeko.setAttribute(
-    "visible",
-    showUmeko
-  );
-
-
-  zundamon.setAttribute(
-    "visible",
-    !showUmeko
-  );
-
-
-  umekoButton.classList.toggle(
-    "active",
-    showUmeko
-  );
-
-
-  zundamonButton.classList.toggle(
-    "active",
-    !showUmeko
-  );
-
-}
-
-
-
-umekoButton.addEventListener(
-  "click",
-  () => {
-
-    selectCharacter("umeko");
-
-  }
-);
-
-
-
-zundamonButton.addEventListener(
-  "click",
-  () => {
-
-    selectCharacter("zundamon");
-
-  }
-);
-
-
-
-/* ========================================
-   背景
-======================================== */
-
-
-const backgroundEffect =
-  document.querySelector(
-    "#backgroundEffect"
-  );
-
-
-const normalButton =
-  document.querySelector(
-    "#normalButton"
-  );
-
-
-const airportButton =
-  document.querySelector(
-    "#airportButton"
-  );
-
-
-const universityButton =
-  document.querySelector(
-    "#universityButton"
-  );
-
-
-let currentBackground =
-  "normal";
-
-
-
-function selectBackground(type) {
-
-
-  currentBackground =
-    type;
-
-
-  normalButton.classList.remove(
-    "active"
-  );
-
-
-  airportButton.classList.remove(
-    "active"
-  );
-
-
-  universityButton.classList.remove(
-    "active"
-  );
-
-
-
-  if (type === "normal") {
-
-
-    normalButton.classList.add(
-      "active"
+  const universityButton =
+    document.querySelector(
+      "#universityButton"
     );
 
 
-    backgroundEffect.style.display =
-      "none";
-
-
-    backgroundEffect.style.backgroundImage =
-      "none";
-
-  }
-
-
-
-  if (type === "airport") {
-
-
-    airportButton.classList.add(
-      "active"
+  const backgroundEffect =
+    document.querySelector(
+      "#backgroundEffect"
     );
 
 
-    backgroundEffect.style.backgroundImage =
-      "url('./assets/airport.jpg')";
+  const status =
+    document.querySelector("#status");
 
 
-    backgroundEffect.style.display =
-      "block";
-
-  }
+  const shutter =
+    document.querySelector("#shutter");
 
 
+  const preview =
+    document.querySelector("#preview");
 
-  if (type === "university") {
 
-
-    universityButton.classList.add(
-      "active"
+  const previewImage =
+    document.querySelector(
+      "#previewImage"
     );
 
 
-    backgroundEffect.style.backgroundImage =
-      "url('./assets/university.jpg')";
-
-
-    backgroundEffect.style.display =
-      "block";
-
-  }
-
-}
-
-
-
-normalButton.addEventListener(
-  "click",
-  () => {
-
-    selectBackground(
-      "normal"
+  const retakeButton =
+    document.querySelector(
+      "#retakeButton"
     );
 
-  }
-);
 
-
-
-airportButton.addEventListener(
-  "click",
-  () => {
-
-    selectBackground(
-      "airport"
+  const saveButton =
+    document.querySelector(
+      "#saveButton"
     );
 
-  }
-);
+
+  let currentBackground =
+    "normal";
 
 
+  let capturedBlob =
+    null;
 
-universityButton.addEventListener(
-  "click",
-  () => {
 
-    selectBackground(
-      "university"
+  /* =========================
+     キャラクター切替
+  ========================== */
+
+  function selectCharacter(name) {
+
+    const showUmeko =
+      name === "umeko";
+
+
+    umeko.setAttribute(
+      "visible",
+      showUmeko
     );
 
+
+    zundamon.setAttribute(
+      "visible",
+      !showUmeko
+    );
+
+
+    umekoButton.classList.toggle(
+      "active",
+      showUmeko
+    );
+
+
+    zundamonButton.classList.toggle(
+      "active",
+      !showUmeko
+    );
   }
-);
 
 
-
-/* ========================================
-   写真撮影
-
-   ここは動いていたコードを
-   基本的にそのまま使用
-======================================== */
-
-
-document
-  .getElementById("photoButton")
-  .addEventListener(
+  umekoButton.addEventListener(
     "click",
     () => {
 
+      selectCharacter("umeko");
 
-      const video =
-        document.querySelector(
-          "video"
-        );
+    }
+  );
 
 
-      const scene =
-        document.querySelector(
-          "a-scene"
-        );
+  zundamonButton.addEventListener(
+    "click",
+    () => {
 
+      selectCharacter("zundamon");
+
+    }
+  );
+
+
+  /* =========================
+     背景
+  ========================== */
+
+  function selectBackground(type) {
+
+    currentBackground =
+      type;
+
+
+    normalButton.classList.remove(
+      "active"
+    );
+
+
+    airportButton.classList.remove(
+      "active"
+    );
+
+
+    universityButton.classList.remove(
+      "active"
+    );
+
+
+    if (type === "normal") {
+
+      normalButton.classList.add(
+        "active"
+      );
+
+
+      backgroundEffect.style.display =
+        "none";
+
+
+      backgroundEffect.style.backgroundImage =
+        "none";
+
+    }
+
+
+    if (type === "airport") {
+
+      airportButton.classList.add(
+        "active"
+      );
+
+
+      backgroundEffect.style.backgroundImage =
+        "url('./assets/airport.jpg')";
+
+
+      backgroundEffect.style.display =
+        "block";
+
+    }
+
+
+    if (type === "university") {
+
+      universityButton.classList.add(
+        "active"
+      );
+
+
+      backgroundEffect.style.backgroundImage =
+        "url('./assets/university.jpg')";
+
+
+      backgroundEffect.style.display =
+        "block";
+
+    }
+
+  }
+
+
+  normalButton.addEventListener(
+    "click",
+    () => {
+
+      selectBackground("normal");
+
+    }
+  );
+
+
+  airportButton.addEventListener(
+    "click",
+    () => {
+
+      selectBackground("airport");
+
+    }
+  );
+
+
+  universityButton.addEventListener(
+    "click",
+    () => {
+
+      selectBackground(
+        "university"
+      );
+
+    }
+  );
+
+
+  /* =========================
+     マーカー認識
+  ========================== */
+
+  target.addEventListener(
+    "targetFound",
+    () => {
+
+      status.textContent =
+        "AR表示中";
+
+    }
+  );
+
+
+  target.addEventListener(
+    "targetLost",
+    () => {
+
+      status.textContent =
+        "マーカーにカメラを向けてください";
+
+    }
+  );
+
+
+  /* =========================
+     撮影
+  ========================== */
+
+  shutter.addEventListener(
+    "click",
+    capturePhoto
+  );
+
+
+  function capturePhoto() {
+
+    if (
+      !scene.renderer ||
+      !scene.renderer.domElement
+    ) {
+
+      alert(
+        "ARの準備中です。少し待ってください。"
+      );
+
+      return;
+    }
+
+
+    const arCanvas =
+      scene.renderer.domElement;
+
+
+    const width =
+      arCanvas.width;
+
+
+    const height =
+      arCanvas.height;
+
+
+    const outputCanvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    outputCanvas.width =
+      width;
+
+
+    outputCanvas.height =
+      height;
+
+
+    const ctx =
+      outputCanvas.getContext(
+        "2d"
+      );
+
+
+    ctx.drawImage(
+      arCanvas,
+      0,
+      0,
+      width,
+      height
+    );
+
+
+    if (
+      currentBackground !==
+      "normal"
+    ) {
+
+      const image =
+        new Image();
+
+
+      image.onload =
+        () => {
+
+
+          ctx.save();
+
+
+          ctx.globalAlpha =
+            0.32;
+
+
+          drawCoverImage(
+            ctx,
+            image,
+            width,
+            height
+          );
+
+
+          ctx.restore();
+
+
+          finishCapture(
+            outputCanvas
+          );
+
+        };
 
 
       if (
-        !video ||
-        !scene ||
-        !scene.renderer
+        currentBackground ===
+        "airport"
       ) {
 
-
-        alert(
-          "ARカメラの準備ができていません"
-        );
-
-
-        return;
+        image.src =
+          "./assets/airport.jpg";
 
       }
 
 
+      if (
+        currentBackground ===
+        "university"
+      ) {
 
-      /* 撮影直前にAR再描画 */
+        image.src =
+          "./assets/university.jpg";
 
-      scene.renderer.render(
-        scene.object3D,
-        scene.camera
-      );
-
-
-
-      requestAnimationFrame(
-        () => {
+      }
 
 
-          const arCanvas =
-            scene.canvas;
+      return;
+    }
 
 
-          const canvas =
-            document.createElement(
-              "canvas"
-            );
+    finishCapture(
+      outputCanvas
+    );
+
+  }
 
 
-          canvas.width =
-            video.videoWidth;
+  /* =========================
+     撮影完了
+  ========================== */
 
+  function finishCapture(canvas) {
 
-          canvas.height =
-            video.videoHeight;
+    canvas.toBlob(
 
+      blob => {
 
-          const ctx =
-            canvas.getContext(
-              "2d"
-            );
+        if (!blob) {
 
-
-
-          /* =====================
-             カメラ映像
-          ===================== */
-
-          ctx.drawImage(
-
-            video,
-
-            0,
-            0,
-
-            canvas.width,
-            canvas.height
-
+          alert(
+            "写真を作成できませんでした。"
           );
 
-
-
-          /* =====================
-             ARモデル
-          ===================== */
-
-          ctx.drawImage(
-
-            arCanvas,
-
-            0,
-            0,
-
-            canvas.width,
-            canvas.height
-
-          );
-
-
-
-          /* =====================
-             背景演出
-             撮影画像にも追加
-          ===================== */
-
-          if (
-            currentBackground !==
-            "normal"
-          ) {
-
-
-            const bg =
-              new Image();
-
-
-            bg.onload =
-              () => {
-
-
-                ctx.save();
-
-
-                ctx.globalAlpha =
-                  0.30;
-
-
-                ctx.drawImage(
-
-                  bg,
-
-                  0,
-                  0,
-
-                  canvas.width,
-                  canvas.height
-
-                );
-
-
-                ctx.restore();
-
-
-                addPhotoFrame(
-                  canvas,
-                  ctx
-                );
-
-              };
-
-
-            if (
-              currentBackground ===
-              "airport"
-            ) {
-
-              bg.src =
-                "./assets/airport.jpg";
-
-            }
-
-
-            if (
-              currentBackground ===
-              "university"
-            ) {
-
-              bg.src =
-                "./assets/university.jpg";
-
-            }
-
-
-          } else {
-
-
-            addPhotoFrame(
-              canvas,
-              ctx
-            );
-
-          }
-
+          return;
 
         }
+
+
+        capturedBlob =
+          blob;
+
+
+        previewImage.src =
+          URL.createObjectURL(
+            blob
+          );
+
+
+        preview.style.display =
+          "flex";
+
+      },
+
+      "image/png",
+
+      1
+
+    );
+
+  }
+
+
+  /* =========================
+     背景画像
+  ========================== */
+
+  function drawCoverImage(
+    ctx,
+    image,
+    canvasWidth,
+    canvasHeight
+  ) {
+
+    const imageRatio =
+      image.naturalWidth /
+      image.naturalHeight;
+
+
+    const canvasRatio =
+      canvasWidth /
+      canvasHeight;
+
+
+    let sourceWidth;
+    let sourceHeight;
+    let sourceX;
+    let sourceY;
+
+
+    if (
+      imageRatio >
+      canvasRatio
+    ) {
+
+      sourceHeight =
+        image.naturalHeight;
+
+
+      sourceWidth =
+        sourceHeight *
+        canvasRatio;
+
+
+      sourceX =
+        (
+          image.naturalWidth -
+          sourceWidth
+        ) / 2;
+
+
+      sourceY =
+        0;
+
+    } else {
+
+      sourceWidth =
+        image.naturalWidth;
+
+
+      sourceHeight =
+        sourceWidth /
+        canvasRatio;
+
+
+      sourceX =
+        0;
+
+
+      sourceY =
+        (
+          image.naturalHeight -
+          sourceHeight
+        ) / 2;
+
+    }
+
+
+    ctx.drawImage(
+
+      image,
+
+      sourceX,
+      sourceY,
+
+      sourceWidth,
+      sourceHeight,
+
+      0,
+      0,
+
+      canvasWidth,
+      canvasHeight
+
+    );
+
+  }
+
+
+  /* =========================
+     撮り直し
+  ========================== */
+
+  retakeButton.addEventListener(
+    "click",
+    () => {
+
+      preview.style.display =
+        "none";
+
+
+      if (
+        previewImage.src
+      ) {
+
+        URL.revokeObjectURL(
+          previewImage.src
+        );
+
+      }
+
+
+      previewImage.removeAttribute(
+        "src"
       );
+
+
+      capturedBlob =
+        null;
 
     }
   );
 
 
-
-/* ========================================
-   写真フレーム
-======================================== */
-
-
-function addPhotoFrame(
-  canvas,
-  ctx
-) {
-
-
-  const bandHeight =
-    canvas.height * 0.10;
-
-
-
-  ctx.fillStyle =
-    "rgba(0,0,0,0.55)";
-
-
-  ctx.fillRect(
-
-    0,
-
-    canvas.height -
-      bandHeight,
-
-    canvas.width,
-
-    bandHeight
-
-  );
-
-
-
-  ctx.fillStyle =
-    "white";
-
-
-  ctx.textAlign =
-    "center";
-
-
-  ctx.textBaseline =
-    "middle";
-
-
-
-  ctx.font =
-    `bold ${
-      Math.round(
-        canvas.width * 0.050
-      )
-    }px sans-serif`;
-
-
-
-  ctx.fillText(
-
-    "津田塾大学",
-
-    canvas.width / 2,
-
-    canvas.height -
-      bandHeight * 0.62
-
-  );
-
-
-
-  ctx.font =
-    `${
-      Math.round(
-        canvas.width * 0.027
-      )
-    }px sans-serif`;
-
-
-
-  ctx.fillText(
-
-    "AR PHOTO",
-
-    canvas.width / 2,
-
-    canvas.height -
-      bandHeight * 0.25
-
-  );
-
-
-
-  createPhoto(
-    canvas
-  );
-
-}
-
-
-
-/* ========================================
-   写真作成
-======================================== */
-
-
-function createPhoto(canvas) {
-
-
-  canvas.toBlob(
-
-    blob => {
-
-
-      const imageUrl =
-        URL.createObjectURL(
-          blob
-        );
-
-
-      const preview =
-        window.open(
-          "",
-          "_blank"
-        );
-
-
-      preview.document.write(`
-
-<!DOCTYPE html>
-
-<html lang="ja">
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="
-    width=device-width,
-    initial-scale=1.0
-  "
->
-
-<title>
-AR Photo
-</title>
-
-
-<style>
-
-* {
-  box-sizing:
-    border-box;
-}
-
-
-html,
-body {
-
-  margin: 0;
-  padding: 0;
-
-  background: #111;
-
-  color: white;
-
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Helvetica Neue",
-    sans-serif;
-}
-
-
-.container {
-
-  min-height: 100vh;
-
-  display: flex;
-
-  flex-direction: column;
-
-  align-items: center;
-}
-
-
-.photo {
-
-  width: 100%;
-
-  display: block;
-}
-
-
-.buttons {
-
-  width: 100%;
-
-  padding: 18px;
-
-  display: flex;
-
-  gap: 12px;
-}
-
-
-button {
-
-  flex: 1;
-
-  min-height: 56px;
-
-  border-radius: 14px;
-
-  border: none;
-
-  font-size: 17px;
-
-  font-weight: 600;
-}
-
-
-.save {
-
-  background: white;
-
-  color: #111;
-}
-
-
-.retry {
-
-  background: #444;
-
-  color: white;
-}
-
-
-.note {
-
-  padding:
-    0 20px 20px;
-
-  font-size: 13px;
-
-  color: #bbb;
-
-  text-align: center;
-}
-
-</style>
-
-</head>
-
-
-<body>
-
-
-<div class="container">
-
-
-<img
-
-  class="photo"
-
-  src="${imageUrl}"
-
-  alt="撮影したAR写真"
-
->
-
-
-<div class="buttons">
-
-
-<button
-
-  class="retry"
-
-  onclick="
-    window.close()
-  ">
-
-  撮り直す
-
-</button>
-
-
-
-<button
-
-  class="save"
-
-  id="saveButton">
-
-  写真に保存
-
-</button>
-
-
-</div>
-
-
-<div class="note">
-
-「写真に保存」を押して、
-共有画面から
-「画像を保存」を選んでください。
-
-</div>
-
-
-</div>
-
-
-
-<script>
-
-
-document
-  .getElementById(
-    "saveButton"
-  )
-  .addEventListener(
+  /* =========================
+     保存
+  ========================== */
+
+  saveButton.addEventListener(
     "click",
     async () => {
 
-
-      try {
-
-
-        const response =
-          await fetch(
-            "${imageUrl}"
-          );
+      if (!capturedBlob) {
+        return;
+      }
 
 
-        const blob =
-          await response.blob();
+      const file =
+        new File(
+
+          [capturedBlob],
+
+          "ar-photo.png",
+
+          {
+            type:
+              "image/png"
+          }
+
+        );
 
 
-        const file =
-          new File(
+      if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({
+          files: [file]
+        })
+      ) {
 
-            [blob],
-
-            "tsuda-ar-photo.png",
-
-            {
-              type:
-                "image/png"
-            }
-
-          );
-
-
-
-        if (
-
-          navigator.share &&
-
-          navigator.canShare &&
-
-          navigator.canShare({
-            files: [file]
-          })
-
-        ) {
-
+        try {
 
           await navigator.share({
 
@@ -1336,76 +1235,98 @@ document
           });
 
 
-          window.close();
+          preview.style.display =
+            "none";
 
 
-        } else {
+          return;
+
+        } catch (error) {
+
+          if (
+            error.name ===
+            "AbortError"
+          ) {
+
+            return;
+
+          }
 
 
-          alert(
-            "写真を長押しして「写真に保存」を選んでください。"
+          console.error(
+            error
           );
 
         }
 
-
-      } catch (error) {
-
-
-        console.error(
-          error
-        );
-
-
-        alert(
-          "写真を長押しして「写真に保存」を選んでください。"
-        );
-
       }
 
+
+      const url =
+        URL.createObjectURL(
+          capturedBlob
+        );
+
+
+      const a =
+        document.createElement(
+          "a"
+        );
+
+
+      a.href =
+        url;
+
+
+      a.download =
+        "ar-photo.png";
+
+
+      document.body.appendChild(
+        a
+      );
+
+
+      a.click();
+
+
+      a.remove();
+
+
+      setTimeout(
+        () => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+        },
+
+        1000
+      );
+
+
+      preview.style.display =
+        "none";
 
     }
   );
 
 
-<\/script>
+  /* =========================
+     初期設定
+  ========================== */
 
-
-</body>
-
-</html>
-
-      `);
-
-
-      preview.document.close();
-
-
-    },
-
-    "image/png"
-
+  selectCharacter(
+    "umeko"
   );
 
-}
 
-
-
-/* 初期状態 */
-
-selectCharacter(
-  "umeko"
-);
-
-
-selectBackground(
-  "normal"
-);
-
+  selectBackground(
+    "normal"
+  );
 
 </script>
 
-
 </body>
-
 </html>
