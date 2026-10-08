@@ -1,579 +1,659 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0,
-                 maximum-scale=1.0, user-scalable=no">
+<meta charset="UTF-8">
 
-  <title>ARフォト</title>
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0,
+maximum-scale=1.0, user-scalable=no">
 
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<title>AR Photo</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: sans-serif;
-      background: #111;
-    }
+<style>
+* {
+  box-sizing: border-box;
+}
 
-    #guide {
-      position: fixed;
-      z-index: 20;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: max-content;
-      max-width: 94%;
-      padding: 10px 15px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.92);
-      color: #333;
-      text-align: center;
-      font-size: 13px;
-      pointer-events: none;
-    }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: sans-serif;
+}
 
-    #controls {
-      position: fixed;
-      z-index: 30;
-      bottom: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 96%;
-      max-width: 500px;
-      padding: 12px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.92);
-    }
+html {
+  height: 100dvh;
+}
 
-    .buttons {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
+body {
+  height: 100dvh;
+}
 
-    button {
-      border: 1px solid #ccc;
-      border-radius: 12px;
-      padding: 11px 8px;
-      background: white;
-      color: #333;
-      font-size: 13px;
-      cursor: pointer;
-      flex: 1;
-    }
+/* AR表示領域 */
+a-scene {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+}
 
-    button.active {
-      background: #dceff5;
-      border: 2px solid #58a6bc;
-      font-weight: bold;
-    }
+.a-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
 
-    #capture {
-      width: 100%;
-      background: #333;
-      color: white;
-      font-size: 16px;
-      padding: 13px;
-    }
+/* カメラ映像 */
+video {
+  object-fit: cover !important;
+}
 
-    #capture:disabled {
-      opacity: 0.5;
-    }
+/* 上部案内 */
+#guide {
+  position: fixed;
+  z-index: 20;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 92%;
+  padding: 10px 16px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.9);
+  color: #333;
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
 
-    #status {
-      margin-top: 7px;
-      text-align: center;
-      font-size: 11px;
-      color: #555;
-    }
+/* 下部操作パネル */
+#controls {
+  position: fixed;
+  z-index: 30;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 94%;
+  max-width: 480px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.92);
+}
 
-    #preview {
-      display: none;
-      position: fixed;
-      z-index: 100;
-      inset: 0;
-      background: rgba(0,0,0,0.94);
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      padding: 15px;
-    }
+#characters {
+  display: flex;
+  gap: 6px;
+}
 
-    #photo {
-      max-width: 100%;
-      max-height: 70vh;
-      object-fit: contain;
-    }
+button {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 11px;
+  background: white;
+  color: #333;
+  padding: 11px 5px;
+  font-size: 13px;
+  cursor: pointer;
+}
 
-    .previewButtons {
-      display: flex;
-      width: 100%;
-      max-width: 400px;
-      gap: 10px;
-    }
+button.active {
+  background: #d9edf4;
+  border: 2px solid #55a6bf;
+  font-weight: bold;
+}
 
-    .previewButtons button {
-      padding: 14px;
-      font-size: 15px;
-    }
-  </style>
+#capture {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  background: #333;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
 
-  <script>
-    // 恐竜をリギングなしで左右に揺らす
-    AFRAME.registerComponent("dino-sway", {
-      tick: function(time) {
-        const t = time / 1000;
-        this.el.object3D.rotation.y =
-          Math.sin(t * 1.5) * 0.10;
-      }
-    });
-  </script>
+#status {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 11px;
+  color: #555;
+}
+
+/* 写真プレビュー */
+#preview {
+  display: none;
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  background: rgba(0,0,0,0.95);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  gap: 12px;
+}
+
+#photo {
+  max-width: 100%;
+  max-height: 75dvh;
+  object-fit: contain;
+}
+
+#previewButtons {
+  display: flex;
+  width: 100%;
+  max-width: 420px;
+  gap: 10px;
+}
+
+#previewButtons button {
+  padding: 14px;
+  font-size: 15px;
+}
+</style>
+
+<script>
+/* 恐竜をゆっくり揺らす */
+AFRAME.registerComponent("dino-sway", {
+  tick: function(time) {
+    const t = time / 1000;
+
+    this.el.object3D.rotation.y =
+      Math.sin(t * 1.3) * 0.08;
+  }
+});
+</script>
+
 </head>
 
 <body>
 
-  <div id="guide">
-    ARを起動しています...
-  </div>
+<div id="guide">
+  ARを起動しています...
+</div>
 
-  <div id="controls">
+<div id="controls">
 
-    <div class="buttons">
-      <button id="btn-umeko" class="active"
-              onclick="selectCharacter('umeko')">
-        津田梅子
-      </button>
+  <div id="characters">
 
-      <button id="btn-zundamon"
-              onclick="selectCharacter('zundamon')">
-        ずんだもん
-      </button>
-
-      <button id="btn-dino"
-              onclick="selectCharacter('dino')">
-        恐竜
-      </button>
-    </div>
-
-    <button id="capture" onclick="takePhoto()">
-      写真を撮る
+    <button
+      id="btn-umeko"
+      class="active"
+      onclick="selectCharacter('umeko')">
+      津田梅子
     </button>
 
-    <div id="status">
-      カメラを準備しています
-    </div>
+    <button
+      id="btn-zundamon"
+      onclick="selectCharacter('zundamon')">
+      ずんだもん
+    </button>
+
+    <button
+      id="btn-dino"
+      onclick="selectCharacter('dino')">
+      恐竜
+    </button>
 
   </div>
 
-  <div id="preview">
+  <button id="capture" onclick="takePhoto()">
+    写真を撮る
+  </button>
 
-    <img id="photo" alt="撮影したAR写真">
+  <div id="status">
+    準備中...
+  </div>
 
-    <div class="previewButtons">
-      <button onclick="savePhoto()">
-        保存・共有
-      </button>
+</div>
 
-      <button onclick="closePreview()">
-        ARに戻る
-      </button>
-    </div>
+<div id="preview">
+
+  <img id="photo" alt="AR写真">
+
+  <div id="previewButtons">
+
+    <button onclick="savePhoto()">
+      保存・共有
+    </button>
+
+    <button onclick="closePreview()">
+      ARに戻る
+    </button>
 
   </div>
 
-  <a-scene
-    id="scene"
-    mindar-image="imageTargetSrc: ./assets/targets.mind;
-                 autoStart: true;
-                 uiScanning: yes;
-                 uiLoading: yes;"
-    embedded
-    renderer="colorManagement: true;
-              physicallyCorrectLights: true;
-              preserveDrawingBuffer: true;
-              alpha: true;"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
+</div>
 
-    <a-assets timeout="30000">
+<!-- ARシーン -->
+<a-scene
+  id="scene"
 
-      <a-asset-item
-        id="asset-umeko"
-        src="./assets/umeko.glb">
-      </a-asset-item>
+  mindar-image="imageTargetSrc: ./assets/ume-marker.mind;
+                autoStart: true;
+                uiLoading: no;
+                uiScanning: no;
+                uiError: no;"
 
-      <a-asset-item
-        id="asset-zundamon"
-        src="./assets/zundamon.glb">
-      </a-asset-item>
+  embedded
 
-      <a-asset-item
-        id="asset-dino"
-        src="./assets/T_Rex.glb">
-      </a-asset-item>
+  renderer="colorManagement: true;
+            physicallyCorrectLights: true;
+            preserveDrawingBuffer: true;
+            alpha: true;"
 
-    </a-assets>
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+  loading-screen="enabled: false">
 
-    <a-camera
+  <a-camera
+    position="0 0 0"
+    look-controls="enabled: false">
+  </a-camera>
+
+  <!-- 梅マーカー -->
+  <a-entity
+    id="target"
+    mindar-image-target="targetIndex: 0">
+
+    <!-- 津田梅子 -->
+    <a-gltf-model
+      id="model-umeko"
       position="0 0 0"
-      look-controls="enabled: false">
-    </a-camera>
+      rotation="90 0 0"
+      scale="1.5 1.5 1.5"
+      visible="true">
+    </a-gltf-model>
 
-    <a-entity
-      id="target"
-      mindar-image-target="targetIndex: 0">
+    <!-- ずんだもん -->
+    <a-gltf-model
+      id="model-zundamon"
+      position="0 0 0"
+      rotation="90 0 0"
+      scale="1.5 1.5 1.5"
+      visible="false">
+    </a-gltf-model>
 
-      <!-- 津田梅子 -->
-      <a-gltf-model
-        id="model-umeko"
-        src="#asset-umeko"
-        position="0 0 0"
-        rotation="90 0 0"
-        scale="1.5 1.5 1.5"
-        visible="true">
-      </a-gltf-model>
+    <!-- ティラノサウルス -->
+    <a-gltf-model
+      id="model-dino"
+      position="0 0 0"
+      rotation="90 0 0"
+      scale="1 1 1"
+      dino-sway
+      visible="false">
+    </a-gltf-model>
 
-      <!-- ずんだもん -->
-      <a-gltf-model
-        id="model-zundamon"
-        src="#asset-zundamon"
-        position="0 0 0"
-        rotation="90 0 0"
-        scale="1.5 1.5 1.5"
-        visible="false">
-      </a-gltf-model>
+  </a-entity>
 
-      <!-- ティラノサウルス -->
-      <a-gltf-model
-        id="model-dino"
-        src="#asset-dino"
-        position="0 0 0"
-        rotation="90 0 0"
-        scale="1 1 1"
-        dino-sway
-        visible="false">
-      </a-gltf-model>
+</a-scene>
 
-    </a-entity>
+<script>
 
-  </a-scene>
+/* 基本設定 */
+const scene = document.getElementById("scene");
+const target = document.getElementById("target");
+const guide = document.getElementById("guide");
+const statusText = document.getElementById("status");
 
-  <script>
-    let currentCharacter = "umeko";
-    let markerFound = false;
-    let photoBlob = null;
-    let photoURL = null;
+const characters = {
+  umeko: {
+    name: "津田梅子",
+    file: "./assets/umeko.glb"
+  },
 
-    const names = {
-      umeko: "津田梅子",
-      zundamon: "ずんだもん",
-      dino: "恐竜"
-    };
+  zundamon: {
+    name: "ずんだもん",
+    file: "./assets/zundamon.glb"
+  },
 
-    const modelIds = [
-      "umeko",
-      "zundamon",
-      "dino"
-    ];
+  dino: {
+    name: "恐竜",
+    file: "./assets/T_Rex.glb"
+  }
+};
 
-    const guide = document.getElementById("guide");
-    const status = document.getElementById("status");
-    const scene = document.getElementById("scene");
-    const target = document.getElementById("target");
+let currentCharacter = "umeko";
+let markerFound = false;
 
-    // キャラクター切り替え
-    function selectCharacter(name) {
+let photoBlob = null;
+let photoURL = null;
 
-      currentCharacter = name;
+const loaded = {};
+const failed = {};
 
-      modelIds.forEach(id => {
+/* モデル読み込み */
+function loadModel(id) {
 
-        const model =
-          document.getElementById("model-" + id);
+  const model =
+    document.getElementById("model-" + id);
 
-        const button =
-          document.getElementById("btn-" + id);
+  if (
+    loaded[id] ||
+    model.dataset.loading === "true"
+  ) {
+    return;
+  }
 
-        model.setAttribute(
-          "visible",
-          id === name
-        );
+  model.dataset.loading = "true";
 
-        button.classList.toggle(
-          "active",
-          id === name
-        );
+  statusText.textContent =
+    characters[id].name + "を読み込み中...";
 
-      });
+  model.setAttribute(
+    "gltf-model",
+    characters[id].file
+  );
+}
 
-      status.textContent =
-        names[name] + "を選択しました";
+/* モデル読み込みイベント */
+Object.keys(characters).forEach(id => {
+
+  const model =
+    document.getElementById("model-" + id);
+
+  model.addEventListener("model-loaded", () => {
+
+    loaded[id] = true;
+    failed[id] = false;
+
+    model.dataset.loading = "false";
+
+    if (currentCharacter === id) {
+
+      statusText.textContent =
+        markerFound
+          ? characters[id].name + "を表示中"
+          : "モデル準備完了・マーカー待機中";
 
     }
 
-    // マーカー認識
-    target.addEventListener("targetFound", () => {
-      markerFound = true;
-      guide.textContent = "マーカーを認識しました";
-      status.textContent =
-        names[currentCharacter] + "を表示中";
-    });
+  });
 
-    target.addEventListener("targetLost", () => {
-      markerFound = false;
-      guide.textContent =
-        "梅マークにカメラを向けてください";
-      status.textContent =
-        "マーカーを探しています";
-    });
+  model.addEventListener("model-error", () => {
 
-    // AR起動状態
-    scene.addEventListener("loaded", () => {
-      guide.textContent =
-        "梅マークにカメラを向けてください";
-    });
+    failed[id] = true;
+    model.dataset.loading = "false";
 
-    scene.addEventListener("arReady", () => {
-      status.textContent =
-        "ARの準備ができました";
-    });
+    if (currentCharacter === id) {
 
-    scene.addEventListener("arError", () => {
-      status.textContent =
-        "AR起動エラー：カメラの許可を確認してください";
-    });
+      statusText.textContent =
+        characters[id].name +
+        "の読み込みに失敗しました";
 
-    // 3Dモデル読み込み状態
-    modelIds.forEach(id => {
-
-      const model =
-        document.getElementById("model-" + id);
-
-      model.addEventListener("model-loaded", () => {
-        console.log(id + " loaded");
-      });
-
-      model.addEventListener("model-error", () => {
-        status.textContent =
-          names[id] + "の3Dモデルを読み込めません";
-      });
-
-    });
-
-    // 写真撮影
-    async function takePhoto() {
-
-      const button =
-        document.getElementById("capture");
-
-      button.disabled = true;
-
-      try {
-
-        const arSystem =
-          scene.systems["mindar-image-system"];
-
-        const video =
-          arSystem &&
-          arSystem.video;
-
-        const renderer =
-          scene.renderer;
-
-        if (!video ||
-            !renderer ||
-            video.readyState < 2) {
-          throw new Error(
-            "カメラがまだ準備できていません"
-          );
-        }
-
-        if (!markerFound) {
-          throw new Error(
-            "梅マーカーを認識してから撮影してください"
-          );
-        }
-
-        const width =
-          video.videoWidth;
-
-        const height =
-          video.videoHeight;
-
-        if (!width || !height) {
-          throw new Error(
-            "カメラの画像サイズを取得できません"
-          );
-        }
-
-        // カメラ画像と3D描画を合成
-        const canvas =
-          document.createElement("canvas");
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx =
-          canvas.getContext("2d");
-
-        ctx.drawImage(
-          video,
-          0, 0,
-          width, height
-        );
-
-        // A-Frame側の最新フレームを描画
-        renderer.render(
-          scene.object3D,
-          scene.camera
-        );
-
-        const arCanvas =
-          renderer.domElement;
-
-        const videoAspect = width / height;
-        const arAspect =
-          arCanvas.width / arCanvas.height;
-
-        let drawWidth, drawHeight;
-        let offsetX, offsetY;
-
-        // AR描画のアスペクト比を維持して合成
-        if (arAspect > videoAspect) {
-
-          drawWidth = width;
-          drawHeight = width / arAspect;
-
-          offsetX = 0;
-          offsetY = (height - drawHeight) / 2;
-
-        } else {
-
-          drawHeight = height;
-          drawWidth = height * arAspect;
-
-          offsetX = (width - drawWidth) / 2;
-          offsetY = 0;
-
-        }
-
-        ctx.drawImage(
-          arCanvas,
-          offsetX,
-          offsetY,
-          drawWidth,
-          drawHeight
-        );
-
-        photoBlob = await new Promise(
-          (resolve, reject) => {
-            canvas.toBlob(
-              blob => blob
-                ? resolve(blob)
-                : reject(new Error("画像を作成できません")),
-              "image/png"
-            );
-          }
-        );
-
-        if (photoURL) {
-          URL.revokeObjectURL(photoURL);
-        }
-
-        photoURL =
-          URL.createObjectURL(photoBlob);
-
-        document.getElementById("photo").src =
-          photoURL;
-
-        document.getElementById("preview")
-          .style.display = "flex";
-
-      } catch (error) {
-
-        status.textContent =
-          "撮影エラー：" + error.message;
-
-      } finally {
-
-        button.disabled = false;
-
-      }
     }
 
-    // 写真を保存・共有
-    async function savePhoto() {
+  });
 
-      if (!photoBlob) return;
+});
 
-      const file = new File(
-        [photoBlob],
-        "AR_Photo.png",
-        { type: "image/png" }
+/* キャラクター切り替え */
+function selectCharacter(id) {
+
+  currentCharacter = id;
+
+  Object.keys(characters).forEach(key => {
+
+    document.getElementById("model-" + key)
+      .setAttribute(
+        "visible",
+        key === id
       );
 
-      try {
+    document.getElementById("btn-" + key)
+      .classList.toggle(
+        "active",
+        key === id
+      );
 
-        if (
-          navigator.canShare &&
-          navigator.canShare({ files: [file] }) &&
-          navigator.share
-        ) {
+  });
 
-          await navigator.share({
-            files: [file],
-            title: "AR Photo"
-          });
+  if (!loaded[id]) {
 
-        } else {
+    loadModel(id);
 
-          const link =
-            document.createElement("a");
+  } else {
 
-          link.href = photoURL;
-          link.download = "AR_Photo.png";
+    statusText.textContent =
+      characters[id].name + "を選択しました";
 
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
+  }
+}
 
-        }
+/* マーカー認識 */
+target.addEventListener("targetFound", () => {
 
-        closePreview();
+  markerFound = true;
 
-      } catch (error) {
+  guide.textContent =
+    "マーカーを認識しました";
 
-        if (error.name !== "AbortError") {
-          status.textContent =
-            "保存・共有に失敗しました";
-        }
+  statusText.textContent =
+    characters[currentCharacter].name +
+    "を表示中";
+
+});
+
+target.addEventListener("targetLost", () => {
+
+  markerFound = false;
+
+  guide.textContent =
+    "梅マークにカメラを向けてください";
+
+  statusText.textContent =
+    "マーカーを探しています";
+
+});
+
+/* AR起動 */
+scene.addEventListener("arReady", () => {
+
+  guide.textContent =
+    "梅マークにカメラを向けてください";
+
+  statusText.textContent =
+    "AR準備完了";
+
+});
+
+scene.addEventListener("arError", () => {
+
+  guide.textContent =
+    "AR起動エラー";
+
+  statusText.textContent =
+    "カメラまたはマーカーファイルを確認してください";
+
+});
+
+/* モデルはシーン起動後に読み込む */
+scene.addEventListener("loaded", () => {
+  loadModel(currentCharacter);
+});
+
+/* 写真撮影 */
+async function takePhoto() {
+
+  try {
+
+    if (!markerFound) {
+      throw new Error(
+        "マーカーを認識してから撮影してください"
+      );
+    }
+
+    if (!loaded[currentCharacter]) {
+      throw new Error(
+        "3Dモデルを読み込み中です"
+      );
+    }
+
+    const arSystem =
+      scene.systems["mindar-image-system"];
+
+    const video =
+      arSystem && arSystem.video;
+
+    const renderer =
+      scene.renderer;
+
+    if (
+      !video ||
+      !renderer ||
+      video.readyState < 2
+    ) {
+      throw new Error(
+        "カメラの準備ができていません"
+      );
+    }
+
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+
+    const canvas =
+      document.createElement("canvas");
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx =
+      canvas.getContext("2d");
+
+    /* カメラ画像 */
+    ctx.drawImage(
+      video,
+      0, 0,
+      width, height
+    );
+
+    /* AR描画 */
+    renderer.render(
+      scene.object3D,
+      scene.camera
+    );
+
+    const arCanvas =
+      renderer.domElement;
+
+    ctx.drawImage(
+      arCanvas,
+      0, 0,
+      width, height
+    );
+
+    photoBlob = await new Promise(
+      (resolve, reject) => {
+
+        canvas.toBlob(blob => {
+
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(
+              new Error("写真を作成できません")
+            );
+          }
+
+        }, "image/png");
 
       }
+    );
+
+    if (photoURL) {
+      URL.revokeObjectURL(photoURL);
     }
 
-    // 撮影画面からARに戻る
-    function closePreview() {
+    photoURL =
+      URL.createObjectURL(photoBlob);
 
-      document.getElementById("preview")
-        .style.display = "none";
+    document.getElementById("photo").src =
+      photoURL;
 
-      guide.textContent = markerFound
-        ? "マーカーを認識しました"
-        : "梅マークにカメラを向けてください";
+    document.getElementById("preview")
+      .style.display = "flex";
+
+  } catch (error) {
+
+    statusText.textContent =
+      "撮影エラー：" + error.message;
+
+  }
+
+}
+
+/* 保存・共有 */
+async function savePhoto() {
+
+  if (!photoBlob) return;
+
+  const file = new File(
+    [photoBlob],
+    "AR_Photo.png",
+    { type: "image/png" }
+  );
+
+  try {
+
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+
+      await navigator.share({
+        files: [file],
+        title: "AR Photo"
+      });
+
+    } else {
+
+      const link =
+        document.createElement("a");
+
+      link.href = photoURL;
+      link.download = "AR_Photo.png";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
     }
 
-  </script>
+    closePreview();
+
+  } catch (error) {
+
+    if (error.name !== "AbortError") {
+
+      statusText.textContent =
+        "保存・共有に失敗しました";
+
+    }
+
+  }
+
+}
+
+/* AR画面に戻る */
+function closePreview() {
+
+  document.getElementById("preview")
+    .style.display = "none";
+
+  guide.textContent = markerFound
+    ? "マーカーを認識しました"
+    : "梅マークにカメラを向けてください";
+
+}
+
+</script>
 
 </body>
 </html>
