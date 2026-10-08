@@ -154,12 +154,21 @@ button.active {
 <script>
 /* 恐竜をゆっくり揺らす */
 AFRAME.registerComponent("dino-sway", {
+  init: function() {
+    this.baseRotation =
+      this.el.object3D.rotation.y;
+  },
+
   tick: function(time) {
     const t = time / 1000;
+
     this.el.object3D.rotation.y =
+      this.baseRotation +
       Math.sin(t * 1.3) * 0.08;
   }
 });
+
+
 </script>
 </head>
 
