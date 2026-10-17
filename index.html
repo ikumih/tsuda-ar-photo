@@ -163,11 +163,11 @@ const characters = [
   {id:"umeko",       name:"津田梅子",   file:"umeko.glb",        baseScale:1.5},
   {id:"zundamon",    name:"ずんだもん", file:"zundamon.glb",     baseScale:1.5},
   {id:"dino",        name:"恐竜",       file:"T_Rex.glb",        baseScale:1.0},
-  {id:"bearRun",     name:"走るトラ",   file:"bear-run.glb",     baseScale:1.5, size:0.4, animate:true},
-  {id:"bearDance",   name:"踊るトラ",   file:"bear-dance.glb",   baseScale:1.5, size:0.4, animate:true},
-  {id:"rabbitDance", name:"踊るうさぎ", file:"rabbit-dance.glb", baseScale:1.5, animate:true},
-  {id:"rabbitRun",   name:"走るうさぎ", file:"rabbit-run.glb",   baseScale:1.5, animate:true},
-  {id:"tako",        name:"タコ",       file:"tako.glb",         baseScale:1.5, animate:true}
+  {id:"bearRun",     name:"走るトラ",   file:"bear-run.glb",     baseScale:1.5, size:0.6, animate:true},
+  {id:"bearDance",   name:"踊るトラ",   file:"bear-dance.glb",   baseScale:1.5, size:0.6, animate:true},
+  {id:"rabbitDance", name:"踊るうさぎ", file:"rabbit-dance.glb", baseScale:1.5, size:0.6, animate:true},
+  {id:"rabbitRun",   name:"走るうさぎ", file:"rabbit-run.glb",   baseScale:1.5, size: 0.6, animate:true},
+  {id:"tako",        name:"タコ",       file:"tako.glb",         baseScale:1.5, size: 0.6, animate:true}
 ];
 
 const selected = new Set(["umeko"]);
@@ -248,7 +248,10 @@ function arrangeCharacters() {
     const col = i % 4;
     const numberInRow = twoRows ? Math.min(4, count - row * 4) : count;
     const x = (col - (numberInRow - 1) / 2) * spacing;
-    const y = twoRows ? (row === 0 ? .29 : -.29) : 0;
+
+    const baseY = twoRows ? (row === 0 ? .29 : -.29) : 0;
+    const y = baseY + (c.yOffset || 0);
+
     const scale = c.baseScale * (c.size || 1) * groupScale;
     slots[c.id].setAttribute("position", `${x} ${y} 0`);
     models[c.id].setAttribute("scale", `${scale} ${scale} ${scale}`);
