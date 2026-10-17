@@ -3,403 +3,146 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>AR Photo</title>
-
 <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
 <style>
 * { box-sizing: border-box; }
-html, body {
-  margin: 0; width: 100%; height: 100%;
-  overflow: hidden; background: transparent;
-  font-family: sans-serif;
-}
-#ar-container {
-  position: fixed; inset: 0;
-  overflow: hidden; background: transparent;
-}
-#ar-container video {
-  position: absolute !important;
-  z-index: 0 !important;
-  background: transparent !important;
-}
-#ar-container canvas:not(#compositeCanvas) {
-  position: absolute !important;
-  z-index: 2 !important;
-  background: transparent !important;
-}
-a-scene, .a-canvas {
-  background: transparent !important;
-}
+html, body { margin:0; width:100%; height:100%; overflow:hidden; font-family:sans-serif; }
+#ar-container { position:fixed; inset:0; overflow:hidden; background:transparent; }
+#ar-container video { position:absolute!important; z-index:0!important; background:transparent!important; }
+#ar-container .a-canvas { position:absolute!important; z-index:2!important; background:transparent!important; }
+a-scene, .a-canvas { background:transparent!important; }
 #compositeCanvas {
-  display: none;
-  position: absolute !important;
-  inset: 0; width: 100%; height: 100%;
-  object-fit: cover;
-  z-index: 1 !important;
-  pointer-events: none;
+  display:none; position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; z-index:1; pointer-events:none;
 }
 #guide {
-  position: fixed; z-index: 20;
-  top: 14px; left: 50%;
-  transform: translateX(-50%);
-  width: max-content; max-width: 92%;
-  padding: 10px 16px;
-  border-radius: 24px;
-  background: rgba(255,255,255,.93);
-  color: #333; text-align: center;
-  font-size: 13px;
-  pointer-events: none;
+  position:fixed; top:14px; left:50%; transform:translateX(-50%);
+  z-index:20; max-width:94%; padding:9px 15px;
+  border-radius:25px; background:rgba(255,255,255,.93);
+  color:#333; font-size:13px; text-align:center; pointer-events:none;
 }
-
-/* 設定画面 */
 #controls {
-  position: fixed; z-index: 30;
-  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-  left: 50%; transform: translateX(-50%);
-  width: 94%; max-width: 520px;
-  max-height: 55dvh;
-  overflow-y: auto;
-  padding: 12px; border-radius: 18px;
-  background: rgba(255,255,255,.95);
-  box-shadow: 0 3px 18px rgba(0,0,0,.2);
+  position:fixed; z-index:30; left:50%; transform:translateX(-50%);
+  bottom:calc(80px + env(safe-area-inset-bottom, 0px));
+  width:94%; max-width:520px; max-height:56dvh; overflow-y:auto;
+  background:rgba(255,255,255,.96); padding:14px; border-radius:16px;
+  box-shadow:0 3px 20px rgba(0,0,0,.18);
 }
-#controls.is-hidden {
-  display: none;
-}
-
-/* 撮影中はこの操作バーだけを表示 */
-#actionBar {
-  position: fixed; z-index: 35;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  left: 50%; transform: translateX(-50%);
-  width: 94%; max-width: 520px;
-  display: flex; gap: 8px;
-}
-#settingsToggle {
-  flex: 0 0 104px;
-  background: rgba(255,255,255,.94);
-  font-weight: bold;
-}
-#doneSettings {
-  width: 100%; margin-top: 12px;
-  background: #dceff5;
-  border: 1px solid #58a6bc;
-  font-weight: bold;
-}
-.section-title {
-  margin: 1px 0 7px;
-  font-size: 13px;
-  font-weight: bold; color: #333;
-}
-.choices {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
+#controls.hidden { display:none; }
+.section-title { font-size:13px; font-weight:700; margin:3px 0 8px; }
+.choices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.background-choices { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:12px; }
 .option {
-  display: flex;
-  align-items: center; justify-content: center;
-  gap: 5px; padding: 10px 3px;
-  min-height: 43px;
-  border: 1px solid #cbd5da;
-  border-radius: 11px;
-  background: white; font-size: 12px;
-  color: #333; cursor: pointer;
-  text-align: center;
+  display:flex; align-items:center; justify-content:center; gap:5px;
+  min-height:43px; padding:9px 4px; border:1px solid #ccd5da;
+  border-radius:10px; background:white; color:#333; text-align:center;
+  font-size:12px; cursor:pointer;
 }
-.option:has(input:checked) {
-  background: #dceff5;
-  border: 2px solid #58a6bc;
-  font-weight: bold;
-  padding: 9px 2px;
+.option:has(input:checked) { background:#dceff5; border:2px solid #58a6bc; font-weight:700; }
+.option input { flex-shrink:0; margin:0; accent-color:#32809b; }
+button { border:1px solid #ccc; border-radius:10px; background:#fff; color:#333; padding:12px 8px; font-size:14px; cursor:pointer; }
+#clearSelection { border:0; background:none; padding:2px 4px; font-size:12px; color:#27627a; }
+#doneSettings { width:100%; margin-top:12px; background:#dceff5; border-color:#58a6bc; font-weight:700; }
+#status { margin-top:8px; text-align:center; color:#555; font-size:11px; }
+#actionBar {
+  position:fixed; z-index:35; left:50%; transform:translateX(-50%);
+  bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+  width:94%; max-width:520px; display:flex; gap:8px;
 }
-.option input {
-  accent-color: #32809b;
-  width: 15px; height: 15px;
-  flex: 0 0 15px; margin: 0;
-}
-.option span { min-width: 0; }
-.background-choices {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px; margin-bottom: 10px;
-}
-.background-choices .option { min-height: 39px; }
-button {
-  border: 1px solid #ccc;
-  border-radius: 12px;
-  background: white; color: #333;
-  font-size: 14px;
-  cursor: pointer; padding: 12px 8px;
-}
-#clearSelection {
-  padding: 3px 6px;
-  font-size: 12px; border: 0;
-  background: transparent; color: #225d74;
-}
-#capture {
-  flex: 1; margin: 0; padding: 13px;
-  background: #333; color: white;
-  font-size: 16px;
-}
-#capture:disabled { opacity: .55; cursor: wait; }
-#status {
-  margin-top: 8px; font-size: 11px;
-  line-height: 1.4;
-  color: #555; text-align: center;
-}
+#settingsToggle { flex:0 0 95px; background:rgba(255,255,255,.95); }
+#capture { flex:1; background:#333; color:#fff; font-size:16px; }
+#capture:disabled { opacity:.6; }
 #preview {
-  display: none;
-  position: fixed; z-index: 100; inset: 0;
-  background: rgba(0,0,0,.95);
-  flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 12px; padding: 15px;
+  display:none; position:fixed; z-index:100; inset:0;
+  background:rgba(0,0,0,.95); padding:15px;
+  flex-direction:column; align-items:center; justify-content:center; gap:12px;
 }
-#photo {
-  max-width: 100%;
-  max-height: 72vh;
-  object-fit: contain;
-}
-.previewButtons {
-  display: flex; width: 100%;
-  max-width: 400px; gap: 10px;
-}
-.previewButtons button { flex: 1; }
-@media (max-width: 370px) {
-  .choices {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  #controls { max-height: 58dvh; }
-}
+#photo { max-width:100%; max-height:72vh; object-fit:contain; }
+.previewButtons { display:flex; width:100%; max-width:400px; gap:10px; }
+.previewButtons button { flex:1; }
+@media(max-width:370px) { .choices { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 </style>
-
 <script>
-/* 恐竜をゆっくり揺らす */
-AFRAME.registerComponent("dino-sway", {
-  init: function () {
-    this.baseRotation = this.el.object3D.rotation.y;
-  },
-  tick: function (time) {
-    this.el.object3D.rotation.y =
-      this.baseRotation +
-      Math.sin(time / 1000 * 1.3) * 0.08;
-  }
-});
-
-/* GLBに含まれるアニメーションをループ再生 */
+/* GLBにアニメーションがある場合だけ再生。マーカーの揺れを付け足さない。 */
 AFRAME.registerComponent("play-glb-animation", {
-  init: function () {
+  init() {
     this.mixer = null;
-    this.model = null;
-    this.onModelLoaded = (event) => {
+    this.onLoaded = event => {
       if (event.target !== this.el) return;
-      if (this.mixer && this.model) {
-        this.mixer.stopAllAction();
-        this.mixer.uncacheRoot(this.model);
-      }
-      this.model = event.detail.model;
-      const clips = this.model && this.model.animations;
-      this.mixer = null;
-      if (!clips || !clips.length) {
-        console.warn("GLBにアニメーションがありません:", this.el.id);
-        return;
-      }
-      this.mixer = new AFRAME.THREE.AnimationMixer(this.model);
-      const action = this.mixer.clipAction(clips[0]);
-      action.setLoop(AFRAME.THREE.LoopRepeat, Infinity);
-      action.play();
+      const model = event.detail.model;
+      const clips = model && model.animations;
+      if (!clips || !clips.length) return;
+      if (this.mixer) this.mixer.stopAllAction();
+      this.mixer = new AFRAME.THREE.AnimationMixer(model);
+      this.mixer.clipAction(clips[0]).setLoop(AFRAME.THREE.LoopRepeat, Infinity).play();
     };
-    this.el.addEventListener("model-loaded", this.onModelLoaded);
+    this.el.addEventListener("model-loaded", this.onLoaded);
   },
-  tick: function (_time, delta) {
+  tick(time, delta) {
     if (this.mixer && this.el.object3D.visible) {
-      this.mixer.update(Math.min(delta / 1000, 0.1));
+      this.mixer.update(Math.min(delta / 1000, .1));
     }
   },
-  remove: function () {
-    this.el.removeEventListener("model-loaded", this.onModelLoaded);
-    if (this.mixer && this.model) {
-      this.mixer.stopAllAction();
-      this.mixer.uncacheRoot(this.model);
-    }
+  remove() {
+    this.el.removeEventListener("model-loaded", this.onLoaded);
+    if (this.mixer) this.mixer.stopAllAction();
   }
 });
 </script>
 </head>
-
 <body>
 <div id="ar-container">
-  <canvas id="compositeCanvas" aria-hidden="true"></canvas>
-
+  <canvas id="compositeCanvas"></canvas>
   <a-scene id="scene"
-    mindar-image="imageTargetSrc: ./assets/ume-marker.mind; autoStart: true; uiLoading: yes; uiScanning: no;"
+    mindar-image="
+      imageTargetSrc: ./assets/ume-marker.mind;
+      autoStart: true;
+      uiLoading: yes;
+      uiScanning: no;
+      filterMinCF: 0.0001;
+      filterBeta: 0.001;
+      missTolerance: 10;
+    "
     embedded
     renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true; alpha: true;"
     background="color: #000000; transparent: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
-
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <a-entity id="target" mindar-image-target="targetIndex: 0">
-
-      <a-entity id="slot-umeko" visible="false">
-        <a-gltf-model id="model-umeko"
-          position="0 0 0" rotation="90 0 0"
-          scale="1.5 1.5 1.5">
-        </a-gltf-model>
-      </a-entity>
-
-      <a-entity id="slot-zundamon" visible="false">
-        <a-gltf-model id="model-zundamon"
-          position="0 0 0" rotation="90 0 0"
-          scale="1.5 1.5 1.5">
-        </a-gltf-model>
-      </a-entity>
-
-      <a-entity id="slot-dino" visible="false">
-        <a-gltf-model id="model-dino"
-          position="0 0 0" rotation="90 0 0"
-          scale="1 1 1" dino-sway>
-        </a-gltf-model>
-      </a-entity>
-
-      <a-entity id="slot-bearRun" visible="false">
-        <a-gltf-model id="model-bearRun"
-          position="0 0 0" rotation="90 0 0"
-          scale="1.5 1.5 1.5" play-glb-animation>
-        </a-gltf-model>
-      </a-entity>
-
-      <a-entity id="slot-bearDance" visible="false">
-        <a-gltf-model id="model-bearDance"
-          position="0 0 0" rotation="90 0 0"
-          scale="1.5 1.5 1.5" play-glb-animation>
-        </a-gltf-model>
-      </a-entity>
-
-      <a-entity id="slot-rabbitDance" visible="false">
-        <a-gltf-model id="model-rabbitDance"
-          position="0 0 0" rotation="90 0 0"
-          scale="1.5 1.5 1.5" play-glb-animation>
-        </a-gltf-model>
-      </a-entity>
-
-      <a-entity id="slot-rabbitRun" visible="false">
-        <a-gltf-model id="model-rabbitRun"
-          position="0 0 0" rotation="90 0 0"
-          scale="1.5 1.5 1.5" play-glb-animation>
-        </a-gltf-model>
-      </a-entity>
-
-      <a-entity id="slot-tako" visible="false">
-        <a-gltf-model id="model-tako"
-          position="0 0 0" rotation="90 0 0"
-          scale="1.5 1.5 1.5" play-glb-animation>
-        </a-gltf-model>
-      </a-entity>
-
-    </a-entity>
+    <a-entity id="target" mindar-image-target="targetIndex: 0"></a-entity>
   </a-scene>
 </div>
 
 <div id="guide">カメラを準備しています</div>
 
-<!-- 設定画面 -->
 <div id="controls">
-
   <div class="section-title">背景</div>
-  <div class="background-choices" role="group" aria-label="背景を選択">
-    <label class="option">
-      <input type="radio" name="background" value="none"
-        checked onchange="chooseBackground('none')">
-      <span>カメラそのまま</span>
-    </label>
-    <label class="option">
-      <input type="radio" name="background" value="university"
-        onchange="chooseBackground('university')">
-      <span>大学の背景</span>
-    </label>
+  <div class="background-choices">
+    <label class="option"><input type="radio" name="background" value="none" checked>カメラそのまま</label>
+    <label class="option"><input type="radio" name="background" value="university">大学の背景</label>
   </div>
-
-  <div class="section-title"
-    style="display:flex;justify-content:space-between;align-items:center;">
+  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
     <span>キャラクター（複数選択できます）</span>
-    <button type="button" id="clearSelection"
-      onclick="clearCharacters()">すべて解除</button>
+    <button type="button" id="clearSelection">すべて解除</button>
   </div>
-
-  <div class="choices" role="group" aria-label="キャラクターを複数選択">
-    <label class="option">
-      <input type="checkbox" id="check-umeko" checked
-        onchange="toggleCharacter('umeko', this.checked)">
-      <span>津田梅子</span>
-    </label>
-    <label class="option">
-      <input type="checkbox" id="check-zundamon"
-        onchange="toggleCharacter('zundamon', this.checked)">
-      <span>ずんだもん</span>
-    </label>
-    <label class="option">
-      <input type="checkbox" id="check-dino"
-        onchange="toggleCharacter('dino', this.checked)">
-      <span>恐竜</span>
-    </label>
-    <label class="option">
-      <input type="checkbox" id="check-bearRun"
-        onchange="toggleCharacter('bearRun', this.checked)">
-      <span>走るくま</span>
-    </label>
-    <label class="option">
-      <input type="checkbox" id="check-bearDance"
-        onchange="toggleCharacter('bearDance', this.checked)">
-      <span>踊るくま</span>
-    </label>
-    <label class="option">
-      <input type="checkbox" id="check-rabbitDance"
-        onchange="toggleCharacter('rabbitDance', this.checked)">
-      <span>踊るうさぎ</span>
-    </label>
-    <label class="option">
-      <input type="checkbox" id="check-rabbitRun"
-        onchange="toggleCharacter('rabbitRun', this.checked)">
-      <span>走るうさぎ</span>
-    </label>
-    <label class="option">
-      <input type="checkbox" id="check-tako"
-        onchange="toggleCharacter('tako', this.checked)">
-      <span>タコ</span>
-    </label>
-  </div>
-
-  <button id="doneSettings" type="button"
-    onclick="setSettingsOpen(false)">
-    設定完了・撮影へ
-  </button>
-
-  <div id="status" role="status" aria-live="polite">
-    ARを起動しています
-  </div>
+  <div id="characterChoices" class="choices"></div>
+  <button type="button" id="doneSettings">設定完了・撮影へ</button>
+  <div id="status" role="status">ARを起動しています</div>
 </div>
 
-<!-- この2つのボタンだけは常に表示 -->
 <div id="actionBar">
-  <button id="settingsToggle" type="button"
-    aria-controls="controls" aria-expanded="true"
-    onclick="toggleSettings()">設定を閉じる</button>
-  <button id="capture" type="button"
-    onclick="takePhoto()">写真を撮る</button>
+  <button type="button" id="settingsToggle">設定を閉じる</button>
+  <button type="button" id="capture">写真を撮る</button>
 </div>
 
 <div id="preview">
   <img id="photo" alt="AR写真">
   <div class="previewButtons">
-    <button type="button" onclick="savePhoto()">保存・共有</button>
-    <button type="button" onclick="closePreview()">ARに戻る</button>
+    <button type="button" id="savePhoto">保存・共有</button>
+    <button type="button" id="closePreview">ARに戻る</button>
   </div>
 </div>
 
@@ -407,518 +150,325 @@ AFRAME.registerComponent("play-glb-animation", {
 const scene = document.getElementById("scene");
 const target = document.getElementById("target");
 const guide = document.getElementById("guide");
-const statusText = document.getElementById("status");
 const controls = document.getElementById("controls");
-const settingsToggle = document.getElementById("settingsToggle");
+const statusText = document.getElementById("status");
 const compositeCanvas = document.getElementById("compositeCanvas");
 const compositeContext = compositeCanvas.getContext("2d");
 const personCanvas = document.createElement("canvas");
 const personContext = personCanvas.getContext("2d");
-const CDN_SEGMENTATION =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1";
+const SEGMENTATION_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1";
 
-const characters = {
-  umeko:       {name:"津田梅子", file:"./assets/umeko.glb"},
-  zundamon:    {name:"ずんだもん", file:"./assets/zundamon.glb"},
-  dino:        {name:"恐竜", file:"./assets/T_Rex.glb"},
-  bearRun:     {name:"走るくま", file:"./assets/bear-run.glb"},
-  bearDance:   {name:"踊るくま", file:"./assets/bear-dance.glb"},
-  rabbitDance: {name:"踊るうさぎ", file:"./assets/rabbit-dance.glb"},
-  rabbitRun:   {name:"走るうさぎ", file:"./assets/rabbit-run.glb"},
-  tako:        {name:"タコ", file:"./assets/tako.glb"}
-};
+/* bear-run / bear-dance の中身は「トラ」。ファイル名はそのまま使う。 */
+const characters = [
+  {id:"umeko",       name:"津田梅子",   file:"umeko.glb",        baseScale:1.5},
+  {id:"zundamon",    name:"ずんだもん", file:"zundamon.glb",     baseScale:1.5},
+  {id:"dino",        name:"恐竜",       file:"T_Rex.glb",        baseScale:1.0},
+  {id:"bearRun",     name:"走るトラ",   file:"bear-run.glb",     baseScale:1.5, size:0.4, animate:true},
+  {id:"bearDance",   name:"踊るトラ",   file:"bear-dance.glb",   baseScale:1.5, size:0.4, animate:true},
+  {id:"rabbitDance", name:"踊るうさぎ", file:"rabbit-dance.glb", baseScale:1.5, animate:true},
+  {id:"rabbitRun",   name:"走るうさぎ", file:"rabbit-run.glb",   baseScale:1.5, animate:true},
+  {id:"tako",        name:"タコ",       file:"tako.glb",         baseScale:1.5, animate:true}
+];
 
 const selected = new Set(["umeko"]);
-const loaded = {};
-
+const loaded = new Set();
+const slots = {};
+const models = {};
 let markerFound = false;
+let backgroundMode = "none";
+let universityImage = null;
+let universityPromise = null;
+let segmentation = null;
+let segmentationPromise = null;
+let segmentationBusy = false;
+let compositeReady = false;
+let backgroundLoopRunning = false;
+let lastSegmentationTime = 0;
+let segmentationFailures = 0;
 let photoBlob = null;
 let photoURL = null;
-let backgroundMode = "none";
-let compositeReady = false;
-let universityImage = null;
-let segmentation = null;
-let segmentationSetupPromise = null;
-let backgroundImagePromise = null;
-let segmentationBusy = false;
-let animationFrameRequested = false;
-let lastSegmentationTime = 0;
-let backgroundFailures = 0;
 
-function selectedNames() {
-  return [...selected].map(id => characters[id].name).join("、") || "なし";
-}
+function setStatus(message) { statusText.textContent = message; }
 
-function updateStatus(message) {
-  statusText.textContent = message;
-}
-
-/* 設定画面の開閉 */
-function setSettingsOpen(open) {
-  controls.classList.toggle("is-hidden", !open);
-  settingsToggle.textContent = open ? "設定を閉じる" : "設定";
-  settingsToggle.setAttribute("aria-expanded", String(open));
-
-  if (!open) {
-    guide.textContent = markerFound
-      ? "マーカーを認識しました"
-      : "梅マークにカメラを向けてください";
-  }
-}
-
-function toggleSettings() {
-  setSettingsOpen(controls.classList.contains("is-hidden"));
-}
-
-/* GLB読み込み */
-function loadCharacter(id) {
-  if (loaded[id]) return;
-  loaded[id] = true;
-
-  const model = document.getElementById("model-" + id);
-
-  model.addEventListener("model-loaded", () => {
-    if (selected.has(id)) {
-      updateStatus(
-        characters[id].name + "を読み込みました（選択中 " +
-        selected.size + "体）"
-      );
-    }
+/* キャラクター選択ボタンと3Dの表示領域を作る */
+const choices = document.getElementById("characterChoices");
+characters.forEach(c => {
+  const label = document.createElement("label");
+  label.className = "option";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = selected.has(c.id);
+  input.addEventListener("change", () => {
+    if (input.checked) selected.add(c.id);
+    else selected.delete(c.id);
+    arrangeCharacters();
+    setStatus("選択中：" + selected.size + "体");
   });
+  label.append(input, document.createTextNode(c.name));
+  choices.appendChild(label);
 
+  const slot = document.createElement("a-entity");
+  slot.setAttribute("visible", "false");
+  slot.setAttribute("id", "slot-" + c.id);
+  const model = document.createElement("a-gltf-model");
+  model.setAttribute("id", "model-" + c.id);
+  model.setAttribute("position", "0 0 0");
+  model.setAttribute("rotation", "90 0 0");
+  if (c.animate) model.setAttribute("play-glb-animation", "");
+  slot.appendChild(model);
+  target.appendChild(slot);
+  slots[c.id] = slot;
+  models[c.id] = model;
+});
+
+function loadCharacter(c) {
+  if (loaded.has(c.id)) return;
+  loaded.add(c.id);
+  const model = models[c.id];
   model.addEventListener("model-error", () => {
-    loaded[id] = false;
-    updateStatus(
-      characters[id].name +
-      "を読み込めませんでした。assetsのファイル名を確認してください"
-    );
+    loaded.delete(c.id);
+    setStatus(c.name + "の読み込みに失敗：assets/" + c.file);
+    guide.textContent = c.name + "を読み込めませんでした";
   });
-
-  model.setAttribute("gltf-model", characters[id].file);
+  model.setAttribute("gltf-model", "./assets/" + c.file);
 }
 
-/* 複数キャラクターを自動配置 */
+/* 複数選択した3Dモデルを重なりにくい位置に配置 */
 function arrangeCharacters() {
-  const ids = [...selected];
-  const count = ids.length;
-  const rows = count > 4 ? 2 : 1;
-  const spacing =
-    count === 2 ? 0.75 : count === 3 ? 0.60 : 0.50;
-  const sizeRatio =
-    count <= 1 ? 1 :
-    count === 2 ? 0.63 :
-    count === 3 ? 0.49 :
-    count === 4 ? 0.41 : 0.35;
+  const active = characters.filter(c => selected.has(c.id));
+  const count = active.length;
+  const twoRows = count > 4;
+  const spacing = count === 2 ? .75 : count === 3 ? .60 : .50;
+  const groupScale = count <= 1 ? 1 : count === 2 ? .63 :
+                     count === 3 ? .49 : count === 4 ? .41 : .35;
 
-  Object.keys(characters).forEach(id => {
-    const slot = document.getElementById("slot-" + id);
-    slot.setAttribute("visible", selected.has(id));
-  });
-
-  ids.forEach((id, index) => {
-    const row = Math.floor(index / 4);
-    const col = index % 4;
-    const inRow = rows === 1
-      ? count : Math.min(4, count - row * 4);
-    const x = (col - (inRow - 1) / 2) * spacing;
-    const y = rows === 1 ? 0 :
-      (row === 0 ? 0.29 : -0.29);
-    const slot = document.getElementById("slot-" + id);
-
-    slot.setAttribute("position", `${x} ${y} 0`);
-    slot.setAttribute("scale",
-      `${sizeRatio} ${sizeRatio} ${sizeRatio}`);
-    loadCharacter(id);
+  characters.forEach(c => slots[c.id].setAttribute("visible", selected.has(c.id)));
+  active.forEach((c, i) => {
+    const row = Math.floor(i / 4);
+    const col = i % 4;
+    const numberInRow = twoRows ? Math.min(4, count - row * 4) : count;
+    const x = (col - (numberInRow - 1) / 2) * spacing;
+    const y = twoRows ? (row === 0 ? .29 : -.29) : 0;
+    const scale = c.baseScale * (c.size || 1) * groupScale;
+    slots[c.id].setAttribute("position", `${x} ${y} 0`);
+    models[c.id].setAttribute("scale", `${scale} ${scale} ${scale}`);
+    loadCharacter(c);
   });
 }
 
-function toggleCharacter(id, checked) {
-  if (checked) selected.add(id);
-  else selected.delete(id);
-  arrangeCharacters();
-  updateStatus(
-    "選択中：" + selected.size +
-    "体（" + selectedNames() + "）"
-  );
-}
-
-function clearCharacters() {
-  Object.keys(characters).forEach(id => {
-    document.getElementById("check-" + id).checked = false;
-  });
-  selected.clear();
-  arrangeCharacters();
-  updateStatus("すべてのキャラクターを解除しました");
-}
-
-/* 大学背景を読み込む */
-function loadUniversityImage() {
-  if (!backgroundImagePromise) {
-    backgroundImagePromise = new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => {
-        universityImage = image;
-        resolve();
-      };
-      image.onerror = () =>
-        reject(new Error("assets/university.jpgが読み込めません"));
-      image.src = "./assets/university.jpg";
-    }).catch(error => {
-      backgroundImagePromise = null;
-      throw error;
-    });
+function setSettingsOpen(open) {
+  controls.classList.toggle("hidden", !open);
+  document.getElementById("settingsToggle").textContent = open ? "設定を閉じる" : "設定";
+  if (!open) {
+    guide.textContent = markerFound ? "マーカーを認識しました" : "梅マークにカメラを向けてください";
   }
-  return backgroundImagePromise;
 }
+document.getElementById("doneSettings").addEventListener("click", () => setSettingsOpen(false));
+document.getElementById("settingsToggle").addEventListener("click", () => {
+  setSettingsOpen(controls.classList.contains("hidden"));
+});
+document.getElementById("clearSelection").addEventListener("click", () => {
+  selected.clear();
+  choices.querySelectorAll("input").forEach(input => input.checked = false);
+  arrangeCharacters();
+  setStatus("キャラクターの選択を解除しました");
+});
 
-/* 人物切り抜きライブラリ */
+/* 大学の背景に、カメラの人物だけを合成する */
+function getVideo() { return scene.systems["mindar-image-system"]?.video; }
+function loadUniversityImage() {
+  if (!universityPromise) {
+    universityPromise = new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => { universityImage = image; resolve(); };
+      image.onerror = () => reject(new Error("university.jpgを読み込めません"));
+      image.src = "./assets/university.jpg";
+    }).catch(error => { universityPromise = null; throw error; });
+  }
+  return universityPromise;
+}
 function loadSegmentation() {
-  if (segmentationSetupPromise) return segmentationSetupPromise;
-
-  segmentationSetupPromise = new Promise((resolve, reject) => {
-    if (typeof SelfieSegmentation !== "undefined") {
-      resolve();
-      return;
-    }
+  if (segmentationPromise) return segmentationPromise;
+  segmentationPromise = new Promise((resolve, reject) => {
+    if (window.SelfieSegmentation) return resolve();
     const script = document.createElement("script");
-    script.src = CDN_SEGMENTATION + "/selfie_segmentation.js";
-    script.crossOrigin = "anonymous";
+    script.src = SEGMENTATION_CDN + "/selfie_segmentation.js";
     script.onload = resolve;
-    script.onerror = () =>
-      reject(new Error("人物認識ライブラリを読み込めません"));
+    script.onerror = () => reject(new Error("人物切り抜き機能を読み込めません"));
     document.head.appendChild(script);
   }).then(() => {
     if (!segmentation) {
-      segmentation = new SelfieSegmentation({
-        locateFile: file => CDN_SEGMENTATION + "/" + file
-      });
+      segmentation = new SelfieSegmentation({locateFile: file => SEGMENTATION_CDN + "/" + file});
       segmentation.setOptions({modelSelection: 1});
-      segmentation.onResults(drawUniversityComposite);
+      segmentation.onResults(drawComposite);
     }
-  }).catch(error => {
-    segmentationSetupPromise = null;
-    throw error;
-  });
-
-  return segmentationSetupPromise;
+  }).catch(error => { segmentationPromise = null; throw error; });
+  return segmentationPromise;
 }
-
-/* 背景画像を画面いっぱいに描画 */
-function drawCover(ctx, image, width, height) {
-  const sourceAspect =
-    image.naturalWidth / image.naturalHeight;
-  const targetAspect = width / height;
-  let sx = 0, sy = 0;
-  let sw = image.naturalWidth;
-  let sh = image.naturalHeight;
-
-  if (sourceAspect > targetAspect) {
-    sw = image.naturalHeight * targetAspect;
-    sx = (image.naturalWidth - sw) / 2;
-  } else {
-    sh = image.naturalWidth / targetAspect;
-    sy = (image.naturalHeight - sh) / 2;
-  }
-
-  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, width, height);
+function drawCover(ctx, image, w, h) {
+  const ratio = Math.max(w / image.naturalWidth, h / image.naturalHeight);
+  const sw = w / ratio;
+  const sh = h / ratio;
+  const sx = (image.naturalWidth - sw) / 2;
+  const sy = (image.naturalHeight - sh) / 2;
+  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, w, h);
 }
-
-/* 大学背景と人物の合成 */
-function drawUniversityComposite(results) {
+function drawComposite(result) {
   if (backgroundMode !== "university" || !universityImage) return;
-
-  const video = scene.systems["mindar-image-system"]?.video;
+  const video = getVideo();
   if (!video || !video.videoWidth || !video.videoHeight) return;
-
-  const ratio = Math.min(
-    1, 960 / Math.max(video.videoWidth, video.videoHeight)
-  );
-  const width = Math.max(1, Math.round(video.videoWidth * ratio));
-  const height = Math.max(1, Math.round(video.videoHeight * ratio));
-
-  if (
-    compositeCanvas.width !== width ||
-    compositeCanvas.height !== height
-  ) {
-    compositeCanvas.width = personCanvas.width = width;
-    compositeCanvas.height = personCanvas.height = height;
+  const ratio = Math.min(1, 960 / Math.max(video.videoWidth, video.videoHeight));
+  const w = Math.round(video.videoWidth * ratio);
+  const h = Math.round(video.videoHeight * ratio);
+  if (compositeCanvas.width !== w || compositeCanvas.height !== h) {
+    compositeCanvas.width = personCanvas.width = w;
+    compositeCanvas.height = personCanvas.height = h;
   }
-
-  personContext.clearRect(0, 0, width, height);
+  personContext.clearRect(0, 0, w, h);
   personContext.globalCompositeOperation = "source-over";
-  personContext.drawImage(results.segmentationMask, 0, 0, width, height);
+  personContext.drawImage(result.segmentationMask, 0, 0, w, h);
   personContext.globalCompositeOperation = "source-in";
-  personContext.drawImage(results.image, 0, 0, width, height);
+  personContext.drawImage(result.image, 0, 0, w, h);
   personContext.globalCompositeOperation = "source-over";
-
-  compositeContext.clearRect(0, 0, width, height);
-  drawCover(compositeContext, universityImage, width, height);
+  compositeContext.clearRect(0, 0, w, h);
+  drawCover(compositeContext, universityImage, w, h);
   compositeContext.drawImage(personCanvas, 0, 0);
-
-  if (!compositeReady) {
-    compositeReady = true;
-    compositeCanvas.style.display = "block";
-    updateStatus("大学の背景を表示中。人物を残して合成しています");
-  }
+  compositeReady = true;
+  compositeCanvas.style.display = "block";
 }
-
-function stopUniversityComposite() {
-  compositeReady = false;
-  compositeCanvas.style.display = "none";
-}
-
-function getARVideo() {
-  return scene.systems["mindar-image-system"]?.video;
-}
-
-function segmentFrame(time) {
-  if (backgroundMode !== "university") {
-    animationFrameRequested = false;
-    return;
-  }
-  requestAnimationFrame(segmentFrame);
-
-  const video = getARVideo();
-  if (
-    !segmentation || !video || video.readyState < 2 ||
-    segmentationBusy || time - lastSegmentationTime < 110
-  ) return;
-
-  lastSegmentationTime = time;
+function stopComposite() { compositeReady = false; compositeCanvas.style.display = "none"; }
+function segmentationFrame(time) {
+  if (backgroundMode !== "university") { backgroundLoopRunning = false; return; }
+  requestAnimationFrame(segmentationFrame);
+  const video = getVideo();
+  if (!segmentation || !video || video.readyState < 2 ||
+      segmentationBusy || time - lastSegmentationTime < 110) return;
   segmentationBusy = true;
-
-  Promise.resolve(
-    segmentation.send({image: video})
-  ).then(() => {
-    backgroundFailures = 0;
-  }).catch(error => {
-    console.warn("人物認識のエラー", error);
-    backgroundFailures++;
-    if (backgroundFailures >= 3) {
-      backgroundMode = "none";
-      document.querySelector(
-        'input[name="background"][value="none"]'
-      ).checked = true;
-      stopUniversityComposite();
-      updateStatus(
-        "人物認識が利用できませんでした。カメラ背景に戻しました"
-      );
-      guide.textContent =
-        "人物認識に失敗。カメラ背景に戻しました";
-    }
-  }).finally(() => {
-    segmentationBusy = false;
-  });
+  lastSegmentationTime = time;
+  Promise.resolve(segmentation.send({image:video}))
+    .then(() => { segmentationFailures = 0; })
+    .catch(error => {
+      console.warn(error);
+      if (++segmentationFailures >= 3) {
+        backgroundMode = "none";
+        document.querySelector('input[name="background"][value="none"]').checked = true;
+        stopComposite();
+        guide.textContent = "大学背景を使えません。カメラ背景に戻しました";
+      }
+    })
+    .finally(() => { segmentationBusy = false; });
 }
-
 async function chooseBackground(mode) {
   backgroundMode = mode;
-  if (mode === "none") {
-    stopUniversityComposite();
-    updateStatus(
-      "カメラの背景を使用中（キャラクター " +
-      selected.size + "体）"
-    );
-    return;
-  }
-
-  stopUniversityComposite();
-  updateStatus("大学背景を準備中です。人物の輪郭を認識します…");
-
+  stopComposite();
+  if (mode === "none") { setStatus("カメラの背景にしました"); return; }
+  setStatus("大学背景を準備しています…");
   try {
-    await Promise.all([
-      loadUniversityImage(),
-      loadSegmentation()
-    ]);
-
+    await Promise.all([loadUniversityImage(), loadSegmentation()]);
     if (backgroundMode !== "university") return;
-
-    if (!animationFrameRequested) {
-      animationFrameRequested = true;
-      requestAnimationFrame(segmentFrame);
+    if (!backgroundLoopRunning) {
+      backgroundLoopRunning = true;
+      requestAnimationFrame(segmentationFrame);
     }
   } catch (error) {
-    if (backgroundMode !== "university") return;
-    console.warn(error);
     backgroundMode = "none";
-    document.querySelector(
-      'input[name="background"][value="none"]'
-    ).checked = true;
-    stopUniversityComposite();
-    updateStatus(
-      "背景の切り替えに失敗しました：" + error.message
-    );
-    guide.textContent = "背景の切り替えに失敗しました";
+    document.querySelector('input[name="background"][value="none"]').checked = true;
+    stopComposite();
+    setStatus(error.message);
   }
 }
+document.querySelectorAll('input[name="background"]').forEach(input => {
+  input.addEventListener("change", () => { if (input.checked) chooseBackground(input.value); });
+});
 
-/* マーカー認識 */
 target.addEventListener("targetFound", () => {
   markerFound = true;
   guide.textContent = "マーカーを認識しました";
-  updateStatus(
-    "選択中：" + selected.size +
-    "体（" + selectedNames() + "）"
-  );
+  setStatus("選択中：" + selected.size + "体");
 });
-
 target.addEventListener("targetLost", () => {
   markerFound = false;
   guide.textContent = "梅マークにカメラを向けてください";
-  updateStatus("マーカーを探しています");
+  setStatus("マーカーを探しています");
 });
-
 scene.addEventListener("arReady", () => {
   guide.textContent = "梅マークにカメラを向けてください";
-  updateStatus("ARの準備ができました");
-  fixCameraLayers();
-});
-
-scene.addEventListener("arError", () => {
-  updateStatus("AR起動エラー：カメラの許可を確認してください");
-  guide.textContent = "カメラの許可を確認してください";
-});
-
-function fixCameraLayers() {
-  const video = document.querySelector(
-    "video.mindar-ui-video, #ar-container video"
-  );
-  const canvas = scene.renderer?.domElement;
-
-  if (video) {
-    video.style.zIndex = "0";
-    video.style.background = "transparent";
-  }
-  if (canvas) {
-    canvas.style.zIndex = "2";
-    canvas.style.background = "transparent";
-  }
+  setStatus("ARの準備ができました");
   if (scene.renderer) {
     scene.renderer.setClearColor(0x000000, 0);
     scene.renderer.setClearAlpha(0);
   }
-}
+});
+scene.addEventListener("arError", () => {
+  guide.textContent = "カメラの許可を確認してください";
+  setStatus("ARの起動に失敗しました");
+});
 
-/* 写真撮影 */
+/* 写真：カメラ映像（または大学背景）と3D描画を合成 */
 async function takePhoto() {
-  const captureButton = document.getElementById("capture");
-  captureButton.disabled = true;
-
+  const button = document.getElementById("capture");
+  button.disabled = true;
   try {
-    const video = getARVideo();
+    const video = getVideo();
     const renderer = scene.renderer;
+    if (!video || !renderer || video.readyState < 2) throw new Error("カメラが準備できていません");
+    if (!markerFound) throw new Error("梅マーカーを認識してください");
+    if (backgroundMode === "university" && !compositeReady) throw new Error("大学背景を準備しています");
 
-    if (!video || !renderer || video.readyState < 2) {
-      throw new Error("カメラが準備できていません");
-    }
-    if (!markerFound) {
-      throw new Error("梅マーカーを認識してください");
-    }
-    if (backgroundMode === "university" && !compositeReady) {
-      throw new Error("大学背景の準備中です");
-    }
-
-    const width = video.videoWidth;
-    const height = video.videoHeight;
+    const w = video.videoWidth, h = video.videoHeight;
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext("2d");
-
-    ctx.drawImage(
-      backgroundMode === "university" ? compositeCanvas : video,
-      0, 0, width, height
-    );
-
+    ctx.drawImage(backgroundMode === "university" ? compositeCanvas : video, 0, 0, w, h);
     renderer.render(scene.object3D, scene.camera);
     const arCanvas = renderer.domElement;
-    const videoAspect = width / height;
+    const videoAspect = w / h;
     const arAspect = arCanvas.width / arCanvas.height;
-
-    let drawWidth, drawHeight, offsetX, offsetY;
-
+    let dw, dh, dx, dy;
     if (arAspect > videoAspect) {
-      drawWidth = width;
-      drawHeight = width / arAspect;
-      offsetX = 0;
-      offsetY = (height - drawHeight) / 2;
+      dw = w; dh = w / arAspect; dx = 0; dy = (h - dh) / 2;
     } else {
-      drawHeight = height;
-      drawWidth = height * arAspect;
-      offsetX = (width - drawWidth) / 2;
-      offsetY = 0;
+      dh = h; dw = h * arAspect; dx = (w - dw) / 2; dy = 0;
     }
-
-    ctx.drawImage(
-      arCanvas, offsetX, offsetY, drawWidth, drawHeight
-    );
-
+    ctx.drawImage(arCanvas, dx, dy, dw, dh);
     photoBlob = await new Promise((resolve, reject) => {
-      canvas.toBlob(blob => {
-        if (blob) resolve(blob);
-        else reject(new Error("写真を作成できません"));
-      }, "image/png");
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("写真を作成できません")), "image/png");
     });
-
     if (photoURL) URL.revokeObjectURL(photoURL);
     photoURL = URL.createObjectURL(photoBlob);
-
     document.getElementById("photo").src = photoURL;
     document.getElementById("preview").style.display = "flex";
-
-  } catch (error) {
-    updateStatus("撮影エラー：" + error.message);
+  } catch(error) {
     guide.textContent = "撮影エラー：" + error.message;
+    setStatus(error.message);
   } finally {
-    captureButton.disabled = false;
+    button.disabled = false;
   }
 }
-
-/* 保存と共有 */
 async function savePhoto() {
   if (!photoBlob) return;
-
-  const file = new File(
-    [photoBlob],
-    "AR_Photo.png",
-    {type: "image/png"}
-  );
-
+  const file = new File([photoBlob], "AR_Photo.png", {type:"image/png"});
   try {
-    if (
-      navigator.canShare &&
-      navigator.share &&
-      navigator.canShare({files: [file]})
-    ) {
-      await navigator.share({
-        files: [file],
-        title: "AR Photo"
-      });
+    if (navigator.share && navigator.canShare && navigator.canShare({files:[file]})) {
+      await navigator.share({files:[file], title:"AR Photo"});
     } else {
-      const link = document.createElement("a");
-      link.href = photoURL;
-      link.download = "AR_Photo.png";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      const a = document.createElement("a");
+      a.href = photoURL; a.download = "AR_Photo.png";
+      document.body.appendChild(a); a.click(); a.remove();
     }
     closePreview();
   } catch (error) {
-    if (error.name !== "AbortError") {
-      updateStatus("保存・共有に失敗しました");
-    }
+    if (error.name !== "AbortError") setStatus("保存・共有できませんでした");
   }
 }
-
 function closePreview() {
   document.getElementById("preview").style.display = "none";
-  guide.textContent = markerFound
-    ? "マーカーを認識しました"
-    : "梅マークにカメラを向けてください";
+  guide.textContent = markerFound ? "マーカーを認識しました" : "梅マークにカメラを向けてください";
 }
-
-/* 最初は梅子を選択 */
-scene.addEventListener("loaded", () => arrangeCharacters());
+document.getElementById("capture").addEventListener("click", takePhoto);
+document.getElementById("savePhoto").addEventListener("click", savePhoto);
+document.getElementById("closePreview").addEventListener("click", closePreview);
+scene.addEventListener("loaded", arrangeCharacters);
 </script>
 </body>
 </html>
