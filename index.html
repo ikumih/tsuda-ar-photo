@@ -148,6 +148,7 @@ AFRAME.registerComponent("play-glb-animation", {
 
 <script>
 const scene = document.getElementById("scene");
+const footerText = "Tsuda University 2026.10.17";
 const target = document.getElementById("target");
 const guide = document.getElementById("guide");
 const controls = document.getElementById("controls");
@@ -411,43 +412,122 @@ scene.addEventListener("arError", () => {
 async function takePhoto() {
   const button = document.getElementById("capture");
   button.disabled = true;
+
   try {
     const video = getVideo();
     const renderer = scene.renderer;
-    if (!video || !renderer || video.readyState < 2) throw new Error("カメラが準備できていません");
-    if (!markerFound) throw new Error("梅マーカーを認識してください");
-    if (backgroundMode === "university" && !compositeReady) throw new Error("大学背景を準備しています");
 
-    const w = video.videoWidth, h = video.videoHeight;
-    const canvas = document.createElement("canvas");
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(backgroundMode === "university" ? compositeCanvas : video, 0, 0, w, h);
+    if (!video || !renderer || video.readyState < 2) {
+      throw new Error("カメラが準備できていません");
+    }
+
+    if (!markerFound) {
+      throw new Error("梅マーカーを認識してください");
+    }
+
+    if (backgroundMode === "university" && !compositeReady) {
+      throw new Error("大学背景を準備しています");
+    }
+
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+
+    /* まずAR画像部分を作る */
+    const arImageCanvas = document.createElement("canvas");
+    arImageCanvas.width = w;
+    arImageCanvas.height = h;
+    const arCtx = arImageCanvas.getContext("2d");
+
+    /* 背景 */
+    arCtx.drawImage(
+      backgroundMode === "university" ? compositeCanvas : video,
+      0, 0, w, h
+    );
+
+    /* 3D描画 */
     renderer.render(scene.object3D, scene.camera);
+
     const arCanvas = renderer.domElement;
     const videoAspect = w / h;
     const arAspect = arCanvas.width / arCanvas.height;
+
     let dw, dh, dx, dy;
+
     if (arAspect > videoAspect) {
-      dw = w; dh = w / arAspect; dx = 0; dy = (h - dh) / 2;
+      dw = w;
+      dh = w / arAspect;
+      dx = 0;
+      dy = (h - dh) / 2;
     } else {
-      dh = h; dw = h * arAspect; dx = (w - dw) / 2; dy = 0;
+      dh = h;
+      dw = h * arAspect;
+      dx = (w - dw) / 2;
+      dy = 0;
     }
-    ctx.drawImage(arCanvas, dx, dy, dw, dh);
+
+    arCtx.drawImage(arCanvas, dx, dy, dw, dh);
+
+    /* 下に文字帯を追加した最終画像を作る */
+    const footerHeight = 54;
+    const outputCanvas = document.createElement("canvas");
+    outputCanvas.width = w;
+    outputCanvas.height = h + footerHeight;
+
+    const outCtx = outputCanvas.getContext("2d");
+
+    /* メイン画像 */
+    outCtx.drawImage(arImageCanvas, 0, 0);
+
+    /* 下帯 */
+    outCtx.fillStyle = "white";
+    outCtx.fillRect(0, h, w, footerHeight);
+
+    /* 上の境界線 */
+    outCtx.strokeStyle = "#cccccc";
+    outCtx.lineWidth = 1;
+    outCtx.beginPath();
+    outCtx.moveTo(0, h + 0.5);
+    outCtx.lineTo(w, h + 0.5);
+    outCtx.stroke();
+
+    /* 文字 */
+    outCtx.fillStyle = "#333333";
+    outCtx.font = "bold 22px sans-serif";
+    outCtx.textAlign = "center";
+    outCtx.textBaseline = "middle";
+    outCtx.fillText(
+      footerText,
+      w / 2,
+      h + footerHeight / 2
+    );
+
     photoBlob = await new Promise((resolve, reject) => {
-      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("写真を作成できません")), "image/png");
+      outputCanvas.toBlob(blob => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("写真を作成できません"));
+        }
+      }, "image/png");
     });
-    if (photoURL) URL.revokeObjectURL(photoURL);
+
+    if (photoURL) {
+      URL.revokeObjectURL(photoURL);
+    }
+
     photoURL = URL.createObjectURL(photoBlob);
     document.getElementById("photo").src = photoURL;
     document.getElementById("preview").style.display = "flex";
-  } catch(error) {
+
+  } catch (error) {
     guide.textContent = "撮影エラー：" + error.message;
     setStatus(error.message);
   } finally {
     button.disabled = false;
   }
 }
+
+  
 async function savePhoto() {
   if (!photoBlob) return;
   const file = new File([photoBlob], "AR_Photo.png", {type:"image/png"});
