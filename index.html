@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport"
- content="width=device-width, initial-scale=1.0,
- maximum-scale=1.0, user-scalable=no">
+  content="width=device-width, initial-scale=1.0,
+  maximum-scale=1.0, user-scalable=no">
 
 <title>AR Photo</title>
 
@@ -25,7 +26,6 @@ html, body {
   font-family: sans-serif;
 }
 
-/* AR表示領域 */
 #ar-container {
   position: fixed;
   inset: 0;
@@ -33,38 +33,46 @@ html, body {
   background: transparent;
 }
 
-/* MindARのカメラ映像 */
 #ar-container video {
   position: absolute !important;
   z-index: 0 !important;
   background: transparent !important;
 }
 
-/* 3D描画はカメラの前面 */
-#ar-container canvas {
+#ar-container canvas:not(#compositeCanvas) {
   position: absolute !important;
+  z-index: 2 !important;
+  background: transparent !important;
+}
+
+a-scene, .a-canvas {
+  background: transparent !important;
+}
+
+/* 人物を残して大学背景を合成 */
+#compositeCanvas {
+  display: none;
+  position: absolute !important;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   z-index: 1 !important;
-  background: transparent !important;
+  pointer-events: none;
 }
 
-/* A-Frameの背景を透明に */
-a-scene,
-.a-canvas {
-  background: transparent !important;
-}
-
-/* 案内 */
+/* 案内表示 */
 #guide {
   position: fixed;
   z-index: 20;
-  top: 15px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
   max-width: 92%;
   padding: 10px 16px;
   border-radius: 24px;
-  background: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.93);
   color: #333;
   text-align: center;
   font-size: 13px;
@@ -75,50 +83,114 @@ a-scene,
 #controls {
   position: fixed;
   z-index: 30;
-  bottom: 15px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: 94%;
-  max-width: 500px;
+  max-width: 520px;
+  max-height: 55dvh;
+  overflow-y: auto;
   padding: 12px;
   border-radius: 18px;
-  background: rgba(255,255,255,.93);
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 3px 18px rgba(0,0,0,.2);
 }
 
-.buttons {
-  display: flex;
+.section-title {
+  margin: 1px 0 7px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #333;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 3px;
+  min-height: 43px;
+  border: 1px solid #cbd5da;
+  border-radius: 11px;
+  background: white;
+  font-size: 12px;
+  color: #333;
+  cursor: pointer;
+  text-align: center;
+}
+
+.option:has(input:checked) {
+  background: #dceff5;
+  border: 2px solid #58a6bc;
+  font-weight: bold;
+  padding: 9px 2px;
+}
+
+.option input {
+  accent-color: #32809b;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  margin: 0;
+}
+
+.option span {
+  min-width: 0;
+}
+
+.background-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
   margin-bottom: 10px;
 }
 
+.background-choices .option {
+  min-height: 39px;
+}
+
 button {
-  flex: 1;
-  padding: 12px 6px;
   border: 1px solid #ccc;
   border-radius: 12px;
   background: white;
   color: #333;
   font-size: 14px;
   cursor: pointer;
+  padding: 12px 8px;
 }
 
-button.active {
-  background: #dceff5;
-  border: 2px solid #58a6bc;
-  font-weight: bold;
+#clearSelection {
+  padding: 3px 6px;
+  font-size: 12px;
+  border: 0;
+  background: transparent;
+  color: #225d74;
 }
 
 #capture {
   width: 100%;
+  margin-top: 10px;
   padding: 13px;
   background: #333;
   color: white;
   font-size: 16px;
 }
 
+#capture:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
 #status {
   margin-top: 8px;
   font-size: 11px;
+  line-height: 1.4;
   color: #555;
   text-align: center;
 }
@@ -149,26 +221,91 @@ button.active {
   max-width: 400px;
   gap: 10px;
 }
+
+.previewButtons button {
+  flex: 1;
+}
+
+@media (max-width: 370px) {
+  .choices {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #controls {
+    max-height: 58dvh;
+  }
+}
 </style>
 
 <script>
 /* 恐竜をゆっくり揺らす */
 AFRAME.registerComponent("dino-sway", {
   init: function() {
-    this.baseRotation =
-      this.el.object3D.rotation.y;
+    this.baseRotation = this.el.object3D.rotation.y;
   },
-
   tick: function(time) {
-    const t = time / 1000;
-
     this.el.object3D.rotation.y =
       this.baseRotation +
-      Math.sin(t * 1.3) * 0.08;
+      Math.sin(time / 1000 * 1.3) * 0.08;
   }
 });
 
+/* GLB内のアニメーションを繰り返し再生 */
+AFRAME.registerComponent("play-glb-animation", {
+  init: function() {
+    this.mixer = null;
+    this.model = null;
 
+    this.onModelLoaded = (event) => {
+      if (event.target !== this.el) return;
+
+      if (this.mixer && this.model) {
+        this.mixer.stopAllAction();
+        this.mixer.uncacheRoot(this.model);
+      }
+
+      this.model = event.detail.model;
+      const clips = this.model && this.model.animations;
+      this.mixer = null;
+
+      if (!clips || !clips.length) {
+        console.warn(
+          "GLBにアニメーションがありません:",
+          this.el.id
+        );
+        return;
+      }
+
+      this.mixer = new AFRAME.THREE.AnimationMixer(this.model);
+
+      const action = this.mixer.clipAction(clips[0]);
+      action.setLoop(AFRAME.THREE.LoopRepeat, Infinity);
+      action.play();
+    };
+
+    this.el.addEventListener(
+      "model-loaded",
+      this.onModelLoaded
+    );
+  },
+
+  tick: function(_time, delta) {
+    if (this.mixer && this.el.object3D.visible) {
+      this.mixer.update(Math.min(delta / 1000, 0.1));
+    }
+  },
+
+  remove: function() {
+    this.el.removeEventListener(
+      "model-loaded",
+      this.onModelLoaded
+    );
+
+    if (this.mixer && this.model) {
+      this.mixer.stopAllAction();
+      this.mixer.uncacheRoot(this.model);
+    }
+  }
+});
 </script>
 </head>
 
@@ -176,123 +313,262 @@ AFRAME.registerComponent("dino-sway", {
 
 <div id="ar-container">
 
-<a-scene
-  id="scene"
-  mindar-image="
-    imageTargetSrc: ./assets/ume-marker.mind;
-    autoStart: true;
-    uiLoading: yes;
-    uiScanning: no;
-  "
-  embedded
-  renderer="
-    colorManagement: true;
-    physicallyCorrectLights: true;
-    preserveDrawingBuffer: true;
-    alpha: true;
-  "
-  background="color: #000000; transparent: true"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false">
+  <canvas id="compositeCanvas" aria-hidden="true"></canvas>
 
-  <a-camera
-    position="0 0 0"
-    look-controls="enabled: false">
-  </a-camera>
+  <a-scene
+    id="scene"
+    mindar-image="
+      imageTargetSrc: ./assets/ume-marker.mind;
+      autoStart: true;
+      uiLoading: yes;
+      uiScanning: no;
+    "
+    embedded
+    renderer="
+      colorManagement: true;
+      physicallyCorrectLights: true;
+      preserveDrawingBuffer: true;
+      alpha: true;
+    "
+    background="color: #000000; transparent: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
 
-  <a-entity
-    id="target"
-    mindar-image-target="targetIndex: 0">
-
-    <!-- 津田梅子 -->
-    <a-gltf-model
-      id="model-umeko"
+    <a-camera
       position="0 0 0"
-      rotation="90 0 0"
-      scale="1.5 1.5 1.5"
-      visible="false">
-    </a-gltf-model>
+      look-controls="enabled: false">
+    </a-camera>
 
-    <!-- ずんだもん -->
-    <a-gltf-model
-      id="model-zundamon"
-      position="0 0 0"
-      rotation="90 0 0"
-      scale="1.5 1.5 1.5"
-      visible="false">
-    </a-gltf-model>
-
-    <!-- 恐竜 -->
     <a-entity
-      position="0 0 0"
-      rotation="0 0 0">
+      id="target"
+      mindar-image-target="targetIndex: 0">
 
-      <a-gltf-model
-        id="model-dino"
-        position="0 0 0"
-        rotation="90 0 0"
-        scale="1 1 1"
-        visible="false"
-        dino-sway>
-      </a-gltf-model>
+      <!-- 津田梅子 -->
+      <a-entity id="slot-umeko" visible="false">
+        <a-gltf-model
+          id="model-umeko"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1.5 1.5 1.5">
+        </a-gltf-model>
+      </a-entity>
+
+      <!-- ずんだもん -->
+      <a-entity id="slot-zundamon" visible="false">
+        <a-gltf-model
+          id="model-zundamon"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1.5 1.5 1.5">
+        </a-gltf-model>
+      </a-entity>
+
+      <!-- 恐竜 -->
+      <a-entity id="slot-dino" visible="false">
+        <a-gltf-model
+          id="model-dino"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1 1 1"
+          dino-sway>
+        </a-gltf-model>
+      </a-entity>
+
+      <!-- 走るくま -->
+      <a-entity id="slot-bearRun" visible="false">
+        <a-gltf-model
+          id="model-bearRun"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1.5 1.5 1.5"
+          play-glb-animation>
+        </a-gltf-model>
+      </a-entity>
+
+      <!-- 踊るくま -->
+      <a-entity id="slot-bearDance" visible="false">
+        <a-gltf-model
+          id="model-bearDance"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1.5 1.5 1.5"
+          play-glb-animation>
+        </a-gltf-model>
+      </a-entity>
+
+      <!-- 踊るうさぎ -->
+      <a-entity id="slot-rabbitDance" visible="false">
+        <a-gltf-model
+          id="model-rabbitDance"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1.5 1.5 1.5"
+          play-glb-animation>
+        </a-gltf-model>
+      </a-entity>
+
+      <!-- 走るうさぎ -->
+      <a-entity id="slot-rabbitRun" visible="false">
+        <a-gltf-model
+          id="model-rabbitRun"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1.5 1.5 1.5"
+          play-glb-animation>
+        </a-gltf-model>
+      </a-entity>
+
+      <!-- タコ -->
+      <a-entity id="slot-tako" visible="false">
+        <a-gltf-model
+          id="model-tako"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="1.5 1.5 1.5"
+          play-glb-animation>
+        </a-gltf-model>
+      </a-entity>
 
     </a-entity>
-
-  </a-entity>
-
-</a-scene>
+  </a-scene>
 </div>
 
+<!-- マーカー案内 -->
 <div id="guide">
   カメラを準備しています
 </div>
 
+<!-- 操作パネル -->
 <div id="controls">
 
-  <div class="buttons">
+  <div class="section-title">背景</div>
 
-    <button id="btn-umeko"
-      class="active"
-      onclick="selectCharacter('umeko')">
-      津田梅子
-    </button>
+  <div class="background-choices"
+       role="group"
+       aria-label="背景を選択">
 
-    <button id="btn-zundamon"
-      onclick="selectCharacter('zundamon')">
-      ずんだもん
-    </button>
+    <label class="option">
+      <input
+        type="radio"
+        name="background"
+        value="none"
+        checked
+        onchange="chooseBackground('none')">
+      <span>カメラそのまま</span>
+    </label>
 
-    <button id="btn-dino"
-      onclick="selectCharacter('dino')">
-      恐竜
-    </button>
+    <label class="option">
+      <input
+        type="radio"
+        name="background"
+        value="university"
+        onchange="chooseBackground('university')">
+      <span>大学の背景</span>
+    </label>
 
   </div>
 
-  <button id="capture" onclick="takePhoto()">
+  <div class="section-title"
+       style="display:flex;justify-content:space-between;align-items:center;">
+    <span>キャラクター（複数選択できます）</span>
+    <button
+      type="button"
+      id="clearSelection"
+      onclick="clearCharacters()">
+      すべて解除
+    </button>
+  </div>
+
+  <div class="choices"
+       role="group"
+       aria-label="キャラクターを複数選択">
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-umeko"
+        checked
+        onchange="toggleCharacter('umeko',this.checked)">
+      <span>津田梅子</span>
+    </label>
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-zundamon"
+        onchange="toggleCharacter('zundamon',this.checked)">
+      <span>ずんだもん</span>
+    </label>
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-dino"
+        onchange="toggleCharacter('dino',this.checked)">
+      <span>恐竜</span>
+    </label>
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-bearRun"
+        onchange="toggleCharacter('bearRun',this.checked)">
+      <span>走るくま</span>
+    </label>
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-bearDance"
+        onchange="toggleCharacter('bearDance',this.checked)">
+      <span>踊るくま</span>
+    </label>
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-rabbitDance"
+        onchange="toggleCharacter('rabbitDance',this.checked)">
+      <span>踊るうさぎ</span>
+    </label>
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-rabbitRun"
+        onchange="toggleCharacter('rabbitRun',this.checked)">
+      <span>走るうさぎ</span>
+    </label>
+
+    <label class="option">
+      <input type="checkbox"
+        id="check-tako"
+        onchange="toggleCharacter('tako',this.checked)">
+      <span>タコ</span>
+    </label>
+
+  </div>
+
+  <button
+    id="capture"
+    type="button"
+    onclick="takePhoto()">
     写真を撮る
   </button>
 
-  <div id="status">
+  <div id="status"
+       role="status"
+       aria-live="polite">
     ARを起動しています
   </div>
 
 </div>
 
+<!-- 写真プレビュー -->
 <div id="preview">
 
   <img id="photo" alt="AR写真">
 
   <div class="previewButtons">
-
-    <button onclick="savePhoto()">
+    <button type="button" onclick="savePhoto()">
       保存・共有
     </button>
-
-    <button onclick="closePreview()">
+    <button type="button" onclick="closePreview()">
       ARに戻る
     </button>
-
   </div>
 
 </div>
@@ -303,6 +579,18 @@ const target = document.getElementById("target");
 const guide = document.getElementById("guide");
 const statusText = document.getElementById("status");
 
+const compositeCanvas =
+  document.getElementById("compositeCanvas");
+const compositeContext =
+  compositeCanvas.getContext("2d");
+
+const personCanvas = document.createElement("canvas");
+const personContext = personCanvas.getContext("2d");
+
+const CDN_SEGMENTATION =
+  "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1";
+
+/* GitHubのassetsにあるファイル名 */
 const characters = {
   umeko: {
     name: "津田梅子",
@@ -315,19 +603,59 @@ const characters = {
   dino: {
     name: "恐竜",
     file: "./assets/T_Rex.glb"
+  },
+  bearRun: {
+    name: "走るくま",
+    file: "./assets/bear-run.glb"
+  },
+  bearDance: {
+    name: "踊るくま",
+    file: "./assets/bear-dance.glb"
+  },
+  rabbitDance: {
+    name: "踊るうさぎ",
+    file: "./assets/rabbit-dance.glb"
+  },
+  rabbitRun: {
+    name: "走るうさぎ",
+    file: "./assets/rabbit-run.glb"
+  },
+  tako: {
+    name: "タコ",
+    file: "./assets/tako.glb"
   }
 };
 
-let currentCharacter = "umeko";
+const selected = new Set(["umeko"]);
+const loaded = {};
+
 let markerFound = false;
 let photoBlob = null;
 let photoURL = null;
 
-const loaded = {};
+let backgroundMode = "none";
+let compositeReady = false;
+let universityImage = null;
+let segmentation = null;
+let segmentationSetupPromise = null;
+let backgroundImagePromise = null;
+let segmentationBusy = false;
+let animationFrameRequested = false;
+let lastSegmentationTime = 0;
+let backgroundFailures = 0;
 
-/* 必要なモデルだけ読み込む */
+function selectedNames() {
+  return [...selected]
+    .map(id => characters[id].name)
+    .join("、") || "なし";
+}
+
+function updateStatus(message) {
+  statusText.textContent = message;
+}
+
+/* 選択したGLBだけ読み込む */
 function loadCharacter(id) {
-
   if (loaded[id]) return;
 
   loaded[id] = true;
@@ -336,14 +664,21 @@ function loadCharacter(id) {
     document.getElementById("model-" + id);
 
   model.addEventListener("model-loaded", () => {
-    statusText.textContent =
-      characters[id].name + "を読み込みました";
+    if (selected.has(id)) {
+      updateStatus(
+        characters[id].name +
+        "を読み込みました（選択中 " +
+        selected.size + "体）"
+      );
+    }
   });
 
   model.addEventListener("model-error", () => {
     loaded[id] = false;
-    statusText.textContent =
-      characters[id].name + "の読み込みに失敗しました";
+    updateStatus(
+      characters[id].name +
+      "を読み込めませんでした。assetsのファイル名を確認してください"
+    );
   });
 
   model.setAttribute(
@@ -352,95 +687,466 @@ function loadCharacter(id) {
   );
 }
 
-/* キャラクター選択 */
-function selectCharacter(id) {
+/* 複数キャラクターを自動配置 */
+function arrangeCharacters() {
+  const ids = [...selected];
+  const count = ids.length;
+  const rows = count > 4 ? 2 : 1;
 
-  currentCharacter = id;
+  const spacing =
+    count === 2 ? 0.75 :
+    count === 3 ? 0.60 : 0.50;
 
-  Object.keys(characters).forEach(key => {
+  const sizeRatio =
+    count <= 1 ? 1 :
+    count === 2 ? 0.63 :
+    count === 3 ? 0.49 :
+    count === 4 ? 0.41 : 0.35;
 
-    const model =
-      document.getElementById("model-" + key);
+  Object.keys(characters).forEach(id => {
+    const slot =
+      document.getElementById("slot-" + id);
 
-    const button =
-      document.getElementById("btn-" + key);
-
-    model.setAttribute(
+    slot.setAttribute(
       "visible",
-      key === id
+      selected.has(id)
     );
-
-    button.classList.toggle(
-      "active",
-      key === id
-    );
-
   });
 
-  loadCharacter(id);
+  ids.forEach((id, index) => {
+    const row = Math.floor(index / 4);
+    const col = index % 4;
 
-  statusText.textContent =
-    characters[id].name + "を選択しました";
+    const inRow =
+      rows === 1
+        ? count
+        : Math.min(4, count - row * 4);
+
+    const x =
+      (col - (inRow - 1) / 2) * spacing;
+
+    const y =
+      rows === 1
+        ? 0
+        : (row === 0 ? 0.29 : -0.29);
+
+    const slot =
+      document.getElementById("slot-" + id);
+
+    slot.setAttribute(
+      "position",
+      `${x} ${y} 0`
+    );
+
+    slot.setAttribute(
+      "scale",
+      `${sizeRatio} ${sizeRatio} ${sizeRatio}`
+    );
+
+    loadCharacter(id);
+  });
+}
+
+/* チェックボックス選択 */
+function toggleCharacter(id, checked) {
+  if (checked) {
+    selected.add(id);
+  } else {
+    selected.delete(id);
+  }
+
+  arrangeCharacters();
+
+  updateStatus(
+    "選択中：" + selected.size +
+    "体（" + selectedNames() + "）"
+  );
+}
+
+/* 選択解除 */
+function clearCharacters() {
+  Object.keys(characters).forEach(id => {
+    document.getElementById(
+      "check-" + id
+    ).checked = false;
+  });
+
+  selected.clear();
+  arrangeCharacters();
+
+  updateStatus(
+    "すべてのキャラクターを解除しました"
+  );
+}
+
+/* university.jpgの読み込み */
+function loadUniversityImage() {
+  if (!backgroundImagePromise) {
+    backgroundImagePromise =
+      new Promise((resolve, reject) => {
+        const image = new Image();
+
+        image.onload = () => {
+          universityImage = image;
+          resolve();
+        };
+
+        image.onerror = () =>
+          reject(new Error(
+            "assets/university.jpgが読み込めません"
+          ));
+
+        image.src = "./assets/university.jpg";
+      }).catch(error => {
+        backgroundImagePromise = null;
+        throw error;
+      });
+  }
+
+  return backgroundImagePromise;
+}
+
+/* 人物認識ライブラリを読み込む */
+function loadSegmentation() {
+  if (segmentationSetupPromise) {
+    return segmentationSetupPromise;
+  }
+
+  segmentationSetupPromise =
+    new Promise((resolve, reject) => {
+      if (typeof SelfieSegmentation !== "undefined") {
+        resolve();
+        return;
+      }
+
+      const script =
+        document.createElement("script");
+
+      script.src =
+        CDN_SEGMENTATION + "/selfie_segmentation.js";
+
+      script.crossOrigin = "anonymous";
+      script.onload = resolve;
+      script.onerror = () =>
+        reject(new Error(
+          "人物認識ライブラリを読み込めません"
+        ));
+
+      document.head.appendChild(script);
+    }).then(() => {
+      if (!segmentation) {
+        segmentation = new SelfieSegmentation({
+          locateFile: file =>
+            CDN_SEGMENTATION + "/" + file
+        });
+
+        segmentation.setOptions({
+          modelSelection: 1
+        });
+
+        segmentation.onResults(
+          drawUniversityComposite
+        );
+      }
+    }).catch(error => {
+      segmentationSetupPromise = null;
+      throw error;
+    });
+
+  return segmentationSetupPromise;
+}
+
+/* 背景画像を画面いっぱいに描画 */
+function drawCover(ctx, image, width, height) {
+  const sourceAspect =
+    image.naturalWidth / image.naturalHeight;
+
+  const targetAspect = width / height;
+
+  let sx = 0;
+  let sy = 0;
+  let sw = image.naturalWidth;
+  let sh = image.naturalHeight;
+
+  if (sourceAspect > targetAspect) {
+    sw = image.naturalHeight * targetAspect;
+    sx = (image.naturalWidth - sw) / 2;
+  } else {
+    sh = image.naturalWidth / targetAspect;
+    sy = (image.naturalHeight - sh) / 2;
+  }
+
+  ctx.drawImage(
+    image,
+    sx, sy, sw, sh,
+    0, 0, width, height
+  );
+}
+
+/* 大学背景に人物を合成 */
+function drawUniversityComposite(results) {
+  if (
+    backgroundMode !== "university" ||
+    !universityImage
+  ) {
+    return;
+  }
+
+  const video =
+    scene.systems["mindar-image-system"]?.video;
+
+  if (
+    !video ||
+    !video.videoWidth ||
+    !video.videoHeight
+  ) {
+    return;
+  }
+
+  const ratio = Math.min(
+    1,
+    960 / Math.max(
+      video.videoWidth,
+      video.videoHeight
+    )
+  );
+
+  const width = Math.max(
+    1,
+    Math.round(video.videoWidth * ratio)
+  );
+
+  const height = Math.max(
+    1,
+    Math.round(video.videoHeight * ratio)
+  );
+
+  if (
+    compositeCanvas.width !== width ||
+    compositeCanvas.height !== height
+  ) {
+    compositeCanvas.width =
+      personCanvas.width = width;
+
+    compositeCanvas.height =
+      personCanvas.height = height;
+  }
+
+  personContext.clearRect(
+    0, 0, width, height
+  );
+
+  personContext.globalCompositeOperation =
+    "source-over";
+
+  personContext.drawImage(
+    results.segmentationMask,
+    0, 0, width, height
+  );
+
+  personContext.globalCompositeOperation =
+    "source-in";
+
+  personContext.drawImage(
+    results.image,
+    0, 0, width, height
+  );
+
+  personContext.globalCompositeOperation =
+    "source-over";
+
+  compositeContext.clearRect(
+    0, 0, width, height
+  );
+
+  drawCover(
+    compositeContext,
+    universityImage,
+    width,
+    height
+  );
+
+  compositeContext.drawImage(
+    personCanvas,
+    0, 0
+  );
+
+  if (!compositeReady) {
+    compositeReady = true;
+    compositeCanvas.style.display = "block";
+
+    updateStatus(
+      "大学の背景を表示中。人物を残して合成しています"
+    );
+  }
+}
+
+/* 大学背景を非表示 */
+function stopUniversityComposite() {
+  compositeReady = false;
+  compositeCanvas.style.display = "none";
+}
+
+function getARVideo() {
+  return scene.systems["mindar-image-system"]?.video;
+}
+
+/* 人物認識を繰り返す */
+function segmentFrame(time) {
+  if (backgroundMode !== "university") {
+    animationFrameRequested = false;
+    return;
+  }
+
+  requestAnimationFrame(segmentFrame);
+
+  const video = getARVideo();
+
+  if (
+    !segmentation ||
+    !video ||
+    video.readyState < 2 ||
+    segmentationBusy ||
+    time - lastSegmentationTime < 110
+  ) {
+    return;
+  }
+
+  lastSegmentationTime = time;
+  segmentationBusy = true;
+
+  Promise.resolve(
+    segmentation.send({image: video})
+  ).then(() => {
+    backgroundFailures = 0;
+  }).catch(error => {
+    console.warn("人物認識のエラー", error);
+    backgroundFailures++;
+
+    if (backgroundFailures >= 3) {
+      backgroundMode = "none";
+
+      document.querySelector(
+        'input[name="background"][value="none"]'
+      ).checked = true;
+
+      stopUniversityComposite();
+
+      updateStatus(
+        "人物認識が利用できませんでした。カメラ背景に戻しました"
+      );
+    }
+  }).finally(() => {
+    segmentationBusy = false;
+  });
+}
+
+/* 背景の切り替え */
+async function chooseBackground(mode) {
+  backgroundMode = mode;
+
+  if (mode === "none") {
+    stopUniversityComposite();
+
+    updateStatus(
+      "カメラの背景を使用中（キャラクター " +
+      selected.size + "体）"
+    );
+    return;
+  }
+
+  stopUniversityComposite();
+
+  updateStatus(
+    "大学背景を準備中です。人物の輪郭を認識します…"
+  );
+
+  try {
+    await Promise.all([
+      loadUniversityImage(),
+      loadSegmentation()
+    ]);
+
+    if (backgroundMode !== "university") {
+      return;
+    }
+
+    if (!animationFrameRequested) {
+      animationFrameRequested = true;
+      requestAnimationFrame(segmentFrame);
+    }
+
+  } catch (error) {
+    if (backgroundMode !== "university") {
+      return;
+    }
+
+    console.warn(error);
+
+    backgroundMode = "none";
+
+    document.querySelector(
+      'input[name="background"][value="none"]'
+    ).checked = true;
+
+    stopUniversityComposite();
+
+    updateStatus(
+      "背景の切り替えに失敗しました：" +
+      error.message
+    );
+  }
 }
 
 /* マーカー認識 */
 target.addEventListener("targetFound", () => {
-
   markerFound = true;
 
   guide.textContent =
     "マーカーを認識しました";
 
-  statusText.textContent =
-    characters[currentCharacter].name + "を表示中";
-
+  updateStatus(
+    "選択中：" + selected.size +
+    "体（" + selectedNames() + "）"
+  );
 });
 
 target.addEventListener("targetLost", () => {
-
   markerFound = false;
 
   guide.textContent =
     "梅マークにカメラを向けてください";
 
-  statusText.textContent =
-    "マーカーを探しています";
-
+  updateStatus(
+    "マーカーを探しています"
+  );
 });
 
 /* AR起動 */
 scene.addEventListener("arReady", () => {
-
   guide.textContent =
     "梅マークにカメラを向けてください";
 
-  statusText.textContent =
-    "ARの準備ができました";
+  updateStatus(
+    "ARの準備ができました"
+  );
 
   fixCameraLayers();
-
 });
 
 scene.addEventListener("arError", () => {
-
-  statusText.textContent =
-    "AR起動エラー：カメラの許可を確認してください";
-
+  updateStatus(
+    "AR起動エラー：カメラの許可を確認してください"
+  );
 });
 
-/* カメラ映像と3D描画の重なり順を修正 */
+/* カメラ映像と3Dモデルの重なり順 */
 function fixCameraLayers() {
+  const video = document.querySelector(
+    "video.mindar-ui-video, #ar-container video"
+  );
 
-  const container =
-    document.getElementById("ar-container");
-
-  const video =
-    document.querySelector(
-      "video.mindar-ui-video, #ar-container video"
-    );
-
-  const canvas =
-    scene.renderer?.domElement;
+  const canvas = scene.renderer?.domElement;
 
   if (video) {
     video.style.zIndex = "0";
@@ -448,38 +1154,34 @@ function fixCameraLayers() {
   }
 
   if (canvas) {
-    canvas.style.zIndex = "1";
+    canvas.style.zIndex = "2";
     canvas.style.background = "transparent";
   }
 
   if (scene.renderer) {
-    scene.renderer.setClearColor(0x000000, 0);
+    scene.renderer.setClearColor(
+      0x000000, 0
+    );
     scene.renderer.setClearAlpha(0);
   }
-
 }
 
 /* 写真撮影 */
 async function takePhoto() {
-
   const captureButton =
     document.getElementById("capture");
 
   captureButton.disabled = true;
 
   try {
+    const video = getARVideo();
+    const renderer = scene.renderer;
 
-    const arSystem =
-      scene.systems["mindar-image-system"];
-
-    const video =
-      arSystem && arSystem.video;
-
-    const renderer =
-      scene.renderer;
-
-    if (!video || !renderer ||
-        video.readyState < 2) {
+    if (
+      !video ||
+      !renderer ||
+      video.readyState < 2
+    ) {
       throw new Error(
         "カメラが準備できていません"
       );
@@ -488,6 +1190,15 @@ async function takePhoto() {
     if (!markerFound) {
       throw new Error(
         "梅マーカーを認識してください"
+      );
+    }
+
+    if (
+      backgroundMode === "university" &&
+      !compositeReady
+    ) {
+      throw new Error(
+        "大学背景の準備中です"
       );
     }
 
@@ -500,24 +1211,23 @@ async function takePhoto() {
     canvas.width = width;
     canvas.height = height;
 
-    const ctx =
-      canvas.getContext("2d");
+    const ctx = canvas.getContext("2d");
 
-    /* カメラ画像 */
+    /* 背景画像 */
     ctx.drawImage(
-      video,
-      0, 0,
-      width, height
+      backgroundMode === "university"
+        ? compositeCanvas
+        : video,
+      0, 0, width, height
     );
 
-    /* 3D画像 */
+    /* 3Dモデル */
     renderer.render(
       scene.object3D,
       scene.camera
     );
 
-    const arCanvas =
-      renderer.domElement;
+    const arCanvas = renderer.domElement;
 
     const videoAspect = width / height;
     const arAspect =
@@ -529,19 +1239,15 @@ async function takePhoto() {
     let offsetY;
 
     if (arAspect > videoAspect) {
-
       drawWidth = width;
       drawHeight = width / arAspect;
       offsetX = 0;
       offsetY = (height - drawHeight) / 2;
-
     } else {
-
       drawHeight = height;
       drawWidth = height * arAspect;
       offsetX = (width - drawWidth) / 2;
       offsetY = 0;
-
     }
 
     ctx.drawImage(
@@ -554,16 +1260,17 @@ async function takePhoto() {
 
     photoBlob = await new Promise(
       (resolve, reject) => {
-
         canvas.toBlob(blob => {
-
-          if (blob) resolve(blob);
-          else reject(
-            new Error("写真を作成できません")
-          );
-
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(
+              new Error(
+                "写真を作成できません"
+              )
+            );
+          }
         }, "image/png");
-
       }
     );
 
@@ -581,44 +1288,35 @@ async function takePhoto() {
       .style.display = "flex";
 
   } catch (error) {
-
-    statusText.textContent =
-      "撮影エラー：" + error.message;
-
+    updateStatus(
+      "撮影エラー：" + error.message
+    );
   } finally {
-
     captureButton.disabled = false;
-
   }
-
 }
 
-/* 保存・共有 */
+/* 写真の保存・共有 */
 async function savePhoto() {
-
   if (!photoBlob) return;
 
   const file = new File(
     [photoBlob],
     "AR_Photo.png",
-    { type: "image/png" }
+    {type: "image/png"}
   );
 
   try {
-
     if (
       navigator.canShare &&
-      navigator.canShare({ files: [file] }) &&
-      navigator.share
+      navigator.share &&
+      navigator.canShare({files: [file]})
     ) {
-
       await navigator.share({
         files: [file],
         title: "AR Photo"
       });
-
     } else {
-
       const link =
         document.createElement("a");
 
@@ -628,40 +1326,35 @@ async function savePhoto() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-
     }
 
     closePreview();
 
   } catch (error) {
-
     if (error.name !== "AbortError") {
-      statusText.textContent =
-        "保存・共有に失敗しました";
+      updateStatus(
+        "保存・共有に失敗しました"
+      );
     }
-
   }
-
 }
 
 /* AR画面に戻る */
 function closePreview() {
-
   document.getElementById("preview")
     .style.display = "none";
 
   guide.textContent = markerFound
     ? "マーカーを認識しました"
     : "梅マークにカメラを向けてください";
-
 }
 
-/* 起動後にモデル読み込み */
+/* 最初は津田梅子を表示 */
 scene.addEventListener("loaded", () => {
-  selectCharacter("umeko");
+  arrangeCharacters();
 });
 
 </script>
-
 </body>
 </html>
+
